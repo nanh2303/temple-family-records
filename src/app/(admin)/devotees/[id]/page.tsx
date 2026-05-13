@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { ArrowLeft, Pencil } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { DeleteDevoteeButton } from "@/components/devotees/DeleteDevoteeButton";
 import { DevoteeProfileSection, ProfileField, profileBasics } from "@/components/devotees/DevoteeProfileCard";
 import { PrintDevoteeButton } from "@/components/devotees/PrintDevoteeButton";
 import { Button } from "@/components/ui/button";
@@ -39,11 +41,21 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{devotee.full_name}</h1>
           {devotee.dharma_name ? <p className="text-sm text-zinc-600">Pháp danh: {devotee.dharma_name}</p> : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <PrintDevoteeButton devoteeId={devotee.id} />
+        <div className="flex flex-wrap items-start gap-2">
           <Button asChild variant="outline">
-            <Link href="/devotees">← Quay lại tìm kiếm</Link>
+            <Link href="/devotees">
+              <ArrowLeft aria-hidden />
+              Quay lại
+            </Link>
           </Button>
+          <Button asChild variant="outline">
+            <Link href={`/devotees/${devotee.id}/edit`}>
+              <Pencil aria-hidden />
+              Chỉnh sửa
+            </Link>
+          </Button>
+          <DeleteDevoteeButton devoteeId={devotee.id} />
+          <PrintDevoteeButton devoteeId={devotee.id} />
         </div>
       </div>
 
