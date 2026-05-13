@@ -7,6 +7,9 @@ import { devoteeUpdateSchema, devoteeUuidSchema } from "@/lib/validations/devote
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+const WRITE_POLICY_ERROR =
+  "Devotee exists, but the database blocked this write. Apply the latest Supabase CRUD policies/grants migration.";
+
 function validationMessage(error: ZodError) {
   return error.issues.map((issue) => issue.message).join(" ");
 }
@@ -58,6 +61,20 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: validationMessage(parsed.error) }, { status: 400 });
   }
 
+  const { data: existingDevotee, error: existingError } = await supabase
+    .from("devotees")
+    .select("id")
+    .eq("id", parsedId.data)
+    .maybeSingle();
+
+  if (existingError) {
+    return NextResponse.json({ error: existingError.message }, { status: 500 });
+  }
+
+  if (!existingDevotee) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { data: devotee, error } = await supabase
     .from("devotees")
     .update(parsed.data)
@@ -70,7 +87,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (!devotee) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
   }
 
   return NextResponse.json({ devotee });
@@ -92,6 +109,20 @@ export async function DELETE(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
+  const { data: existingDevotee, error: existingError } = await supabase
+    .from("devotees")
+    .select("id")
+    .eq("id", parsedId.data)
+    .maybeSingle();
+
+  if (existingError) {
+    return NextResponse.json({ error: existingError.message }, { status: 500 });
+  }
+
+  if (!existingDevotee) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   // Authenticated users are treated as admins in this app. Add role-claim checks here before adding non-admin users.
   const { data, error } = await supabase.from("devotees").delete().eq("id", parsedId.data).select("id").maybeSingle();
 
@@ -100,7 +131,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   if (!data) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
   }
 
   return NextResponse.json({ success: true });
