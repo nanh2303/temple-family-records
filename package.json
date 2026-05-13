@@ -6,17 +6,27 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "ci": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
     "next": "16.2.6",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.75.0",
+    "tailwind-merge": "^3.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
