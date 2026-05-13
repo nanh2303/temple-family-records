@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 
 import { DeleteDevoteeButton } from "@/components/devotees/DeleteDevoteeButton";
 import { DevoteeProfileSection, ProfileField, profileBasics } from "@/components/devotees/DevoteeProfileCard";
-import { PrintDevoteeButton } from "@/components/devotees/PrintDevoteeButton";
+import { PrintFormSelectorButton } from "@/components/devotees/PrintFormSelectorButton";
 import { Button } from "@/components/ui/button";
 import { fetchDevoteeProfile } from "@/lib/data/devotee-profile";
 
@@ -55,7 +55,7 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
             </Link>
           </Button>
           <DeleteDevoteeButton devoteeId={devotee.id} />
-          <PrintDevoteeButton devoteeId={devotee.id} />
+          <PrintFormSelectorButton devoteeId={devotee.id} />
         </div>
       </div>
 

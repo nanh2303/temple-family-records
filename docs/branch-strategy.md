@@ -17,6 +17,8 @@ Create topic branches from **`dev`** using a consistent prefix:
 - `feature/devotee-profile` — profile layout and related data fetching.
 - `feature/pdf-print` — PDF mapping and stamping.
 - `feature/database-schema` — migrations, policies, and performance indexes.
+- `feature/devotee-crud` — create, update, and delete the main devotee record.
+- `feature/form-template-selection` — template picker and registry for server-generated PDF forms.
 
 ## Workflow
 
@@ -25,3 +27,11 @@ Create topic branches from **`dev`** using a consistent prefix:
 3. Promote `staging` → `main` for production; **CI - Main** guards the production branch.
 
 Hotfixes can branch from `main`, merge back into `staging` and `dev` to keep history linear.
+
+For the devotee management and print-template work:
+
+1. Create `feature/devotee-crud` from `dev`.
+2. Implement CRUD and merge it into `dev`.
+3. Create or rebase `feature/form-template-selection` on top of the CRUD work.
+4. Merge template selection into `dev`.
+5. Open the production PR from `dev` into `main`; Vercel deploys `main`.
