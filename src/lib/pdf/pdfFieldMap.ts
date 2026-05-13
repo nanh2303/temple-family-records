@@ -7,7 +7,7 @@
  * implement stamping in `fillMauGiaPha.ts`.
  */
 
-export const MAU_GIA_PHA_TEMPLATE_FILENAME = "MauGiaPha-So-05.BHDTU.pdf" as const;
+export const MAU_GIA_PHA_TEMPLATE_FILENAME = "5.-MauGiaPha-So-05.BHDTU-PDF.pdf" as const;
 
 /** AcroForm field names — placeholders until the real template is inspected. */
 export const MAU_GIA_PHA_ACROFORM_FIELDS = {
@@ -45,5 +45,21 @@ export const MAU_GIA_PHA_STAMP_COORDINATES: Partial<
     }
   >
 > = {
-  fullName: { pageIndex: 0, x: 72, y: 720, fontSize: 11 },
+  familyRegistryNo: { pageIndex: 0, x: 165, y: 794, fontSize: 9 },
+  bhdRegistryNo: { pageIndex: 0, x: 435, y: 794, fontSize: 9 },
+
+  fullName: { pageIndex: 0, x: 125, y: 760, fontSize: 9 },
+  birthDate: { pageIndex: 0, x: 160, y: 737, fontSize: 9 },
+  birthPlace: { pageIndex: 0, x: 125, y: 715, fontSize: 9 },
+  dharmaName: { pageIndex: 0, x: 125, y: 693, fontSize: 9 },
+  address: { pageIndex: 0, x: 125, y: 671, fontSize: 9 },
+  joinedUnitDate: { pageIndex: 0, x: 160, y: 649, fontSize: 9 },
+  vowDate: { pageIndex: 0, x: 160, y: 627, fontSize: 9 },
+  refugeDate: { pageIndex: 0, x: 160, y: 605, fontSize: 9 },
+  preceptor: { pageIndex: 0, x: 160, y: 583, fontSize: 9 },
+  fatherName: { pageIndex: 0, x: 125, y: 561, fontSize: 9 },
+  motherName: { pageIndex: 0, x: 125, y: 539, fontSize: 9 },
+
+  deathDate: { pageIndex: 1, x: 120, y: 74, fontSize: 9 },
+  graveLocation: { pageIndex: 1, x: 120, y: 52, fontSize: 9 },
 };
