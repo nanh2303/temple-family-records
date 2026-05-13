@@ -4,9 +4,10 @@ This folder holds SQL migrations and seed data for the `temple-family-records` p
 
 ## Files
 
-- `migrations/0001_initial_schema.sql` — extensions (`unaccent`, `pg_trgm`), core tables, indexes, `search_devotees` RPC, and RLS policies for `authenticated` read access.
-- `migrations/0002_devotee_crud_policies.sql` — RLS write policies for the admin-only CRUD workflow.
-- `seed.sql` — optional sample devotees for development and demos.
+- `migrations/0001_initial_schema.sql` - extensions (`unaccent`, `pg_trgm`), core tables, indexes, `search_devotees` RPC, and RLS policies for `authenticated` read access.
+- `migrations/0002_devotee_crud_policies.sql` - RLS write policies for the admin-only CRUD workflow.
+- `migrations/0003_devotee_crud_policy_grants.sql` - Idempotent CRUD policy/grant repair for existing databases.
+- `seed.sql` - optional sample devotees for development and demos.
 
 ## Apply migrations
 
