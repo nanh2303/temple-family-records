@@ -1,6 +1,6 @@
 # Temple family records
 
-Internal **Next.js** admin application for a Buddhist temple to maintain **devotee and family registry** data: accent-tolerant search, rich profiles aligned with the official PDF form (Mẫu Gia Phả Số 05 — BHDTU), and server-side PDF generation.
+Internal **Next.js** admin application for a Buddhist temple to maintain **devotee and family registry** data: accent-tolerant search, CRUD for devotee records, rich profiles aligned with official PDF forms, and server-side PDF generation.
 
 ## Tech stack
 
@@ -25,17 +25,45 @@ Open [http://localhost:3000](http://localhost:3000), sign in with an invited Sup
 ### Supabase
 
 1. Create a Supabase project.
-2. Run `supabase/migrations/0001_initial_schema.sql` in the SQL editor (see `supabase/README.md`).
+2. Run the SQL migrations in `supabase/migrations/` in order (see `supabase/README.md`).
 3. Optionally run `supabase/seed.sql` for sample devotees.
 4. Invite an admin user (disable public sign-up in production).
+
+### Devotee management
+
+Authenticated app users can manage the main devotee record:
+
+- `GET /devotees` - search devotees.
+- `GET /devotees/new` - create a devotee.
+- `GET /devotees/[id]` - view the existing profile UI.
+- `GET /devotees/[id]/edit` - edit a devotee.
+- `POST /api/devotees` - create a devotee.
+- `GET /api/devotees/[id]` - fetch the profile bundle.
+- `PATCH /api/devotees/[id]` - update a devotee.
+- `DELETE /api/devotees/[id]` - delete a devotee.
 
 ### PDF template
 
 Place the official file at:
 
-`public/templates/MauGiaPha-So-05.BHDTU.pdf`
+`public/templates/5.-MauGiaPha-So-05.BHDTU-PDF.pdf`
 
 If the file is missing, the PDF route still returns a **placeholder PDF** explaining what to add. Map AcroForm field names in `src/lib/pdf/pdfFieldMap.ts` after inspecting the template.
+
+The profile page uses `src/components/devotees/PrintFormSelectorButton.tsx` to open a template picker before generating a PDF. The current endpoint is:
+
+- `GET /api/pdf/devotees/[id]?template=mau-gia-pha-05`
+
+Omitting `template` still defaults to `mau-gia-pha-05` for backward compatibility.
+
+To add a new PDF form later:
+
+1. Add the template PDF under `public/templates/`.
+2. Add any field map and fill/stamp function under `src/lib/pdf/`.
+3. Add a new entry to the client-safe registry in `src/lib/pdf/formTemplates.ts`.
+4. Extend the switch in `src/app/api/pdf/devotees/[id]/route.ts` to call the new fill function.
+
+The profile UI should not need to change when new form templates are registered.
 
 ## Environment variables
 
@@ -51,6 +79,10 @@ If the file is missing, the PDF route still returns a **placeholder PDF** explai
 - **`main`** — production; workflow `.github/workflows/ci-main.yml` (lint, typecheck, production build).
 - **`dev`** — integration; workflow `.github/workflows/ci-dev.yml` (lint, typecheck, build).
 - **`staging`** — UAT (documented in `docs/branch-strategy.md`; add a workflow when needed).
+- **`feature/devotee-crud`** — CRUD for the main devotee record.
+- **`feature/form-template-selection`** — PDF form template selection, based on the CRUD branch.
+
+Merge feature branches into `dev`; later open the release PR from `dev` into `main` for Vercel production deployment.
 
 Configure GitHub repository **Actions secrets**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` so CI builds succeed.
 

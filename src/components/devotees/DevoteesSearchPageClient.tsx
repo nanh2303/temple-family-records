@@ -1,9 +1,12 @@
 "use client";
 
+import { Plus } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { DevoteeSearchBox } from "@/components/devotees/DevoteeSearchBox";
 import { DevoteeSearchResults } from "@/components/devotees/DevoteeSearchResults";
+import { Button } from "@/components/ui/button";
 import { buildDevoteeSearchUrl } from "@/lib/search/buildSearchQuery";
 import type { DevoteeSearchRow } from "@/types/devotee";
 
@@ -57,11 +60,19 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Tra cứu đạo hữu</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Tìm theo mảnh thông tin: tên, pháp danh, quê quán, địa chỉ — hỗ trợ không dấu và dấu sai lệch nhẹ.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Tra cứu đạo hữu</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            Tìm theo mảnh thông tin: tên, pháp danh, quê quán, địa chỉ - hỗ trợ không dấu và dấu sai lệch nhẹ.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/devotees/new">
+            <Plus aria-hidden />
+            Thêm Phật tử
+          </Link>
+        </Button>
       </div>
       <DevoteeSearchBox value={query} onChange={setQuery} />
       {error ? (
