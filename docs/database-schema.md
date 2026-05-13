@@ -34,6 +34,13 @@ All child tables reference `devotees(id)` with `ON DELETE CASCADE`.
 
 `0001_initial_schema.sql` grants **SELECT** to the `authenticated` role on all five tables.
 
+`0002_devotee_crud_policies.sql` opens **INSERT**, **UPDATE**, and **DELETE** to `authenticated` on:
+
+- `public.devotees`
+- `public.devotee_training_records`
+- `public.devotee_roles`
+- `public.devotee_notes`
+- `public.devotee_afterlife_info`
 `0002_devotee_crud_policies.sql` opens **INSERT**, **UPDATE**, and **DELETE** to `authenticated` for the admin-only CRUD workflow. `0003_devotee_crud_policy_grants.sql` is an idempotent repair migration that also grants table privileges and creates any missing CRUD policies.
 
 The product is currently admin-only, so authenticated users may manage records. Tighten these policies with role claims before adding non-admin users.

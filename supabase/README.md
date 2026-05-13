@@ -28,4 +28,4 @@ If you use `supabase db reset` locally, configure `supabase/config.toml` first; 
 
 ## Auth notes
 
-Disable public sign-up in the Supabase dashboard (Authentication -> Providers) and invite only temple administrators. This application assumes **any signed-in user is an admin** and may create, edit, delete, and print records; tighten further with `app_metadata` roles if you add public sign-up later.
+Disable public sign-up in the Supabase dashboard (Authentication → Providers) and invite only temple administrators. This application assumes **any signed-in user is an admin** and may create, edit, delete, and print records; tighten further with `app_metadata` roles if you add public sign-up later.
