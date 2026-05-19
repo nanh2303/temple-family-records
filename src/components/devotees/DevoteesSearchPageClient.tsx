@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { FileSpreadsheet, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -16,7 +16,9 @@ type DevoteesSearchPageClientProps = {
   initialQuery?: string;
 };
 
-export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPageClientProps) {
+export function DevoteesSearchPageClient({
+  initialQuery = "",
+}: DevoteesSearchPageClientProps) {
   const [query, setQuery] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
   const [results, setResults] = useState<DevoteeSearchRow[]>([]);
@@ -37,9 +39,14 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(buildDevoteeSearchUrl(q), { method: "GET", credentials: "same-origin" });
+      const res = await fetch(buildDevoteeSearchUrl(q), {
+        method: "GET",
+        credentials: "same-origin",
+      });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(body?.error ?? `Request failed (${res.status})`);
       }
       const data = (await res.json()) as { results: DevoteeSearchRow[] };
@@ -62,17 +69,28 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Tra cứu đạo hữu</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            Tra cứu đạo hữu
+          </h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Tìm theo mảnh thông tin: tên, pháp danh, quê quán, địa chỉ - hỗ trợ không dấu và dấu sai lệch nhẹ.
+            Tìm theo mảnh thông tin: tên, pháp danh, quê quán, địa chỉ - hỗ trợ
+            không dấu và dấu sai lệch nhẹ.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/devotees/new">
-            <Plus aria-hidden />
-            Thêm Phật tử
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/devotees/import">
+              <FileSpreadsheet aria-hidden />
+              Import CSV
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/devotees/new">
+              <Plus aria-hidden />
+              Thêm Phật tử
+            </Link>
+          </Button>
+        </div>
       </div>
       <DevoteeSearchBox value={query} onChange={setQuery} />
       {error ? (
@@ -80,7 +98,11 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
           {error}
         </p>
       ) : null}
-      <DevoteeSearchResults results={results} loading={loading} query={debounced} />
+      <DevoteeSearchResults
+        results={results}
+        loading={loading}
+        query={debounced}
+      />
     </div>
   );
 }
