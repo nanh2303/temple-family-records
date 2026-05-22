@@ -1,7 +1,7 @@
 import { normalizeVietnameseClient } from "@/lib/search/normalizeVietnamese";
 import {
-  devoteeCreateSchema,
-  type DevoteeCreateInput,
+  devoteeProfileCreateSchema,
+  type DevoteeProfileCreateInput,
 } from "@/lib/validations/devotee";
 import type { DevoteeRecord } from "@/types/devotee";
 
@@ -120,6 +120,35 @@ export const DEVOTEE_CSV_FIELD_CONFIG = [
     label: "Tên Mẹ",
     examples: ["ten me", "tên mẹ", "me", "mẹ", "mother_name", "mother name"],
   },
+  {
+    field: "death_date",
+    label: "Tạ thế ngày",
+    examples: [
+      "ta the ngay",
+      "tạ thế ngày",
+      "ngay mat",
+      "ngày mất",
+      "death_date",
+      "death date",
+    ],
+  },
+  {
+    field: "grave_location",
+    label: "Mộ chí tại",
+    examples: [
+      "mo chi tai",
+      "mộ chí tại",
+      "noi an tang",
+      "nơi an táng",
+      "grave_location",
+      "grave location",
+    ],
+  },
+  {
+    field: "afterlife_note",
+    label: "Ghi chú hậu thế",
+    examples: ["ghi chu hau the", "ghi chú hậu thế", "afterlife_note", "afterlife note"],
+  },
 ] as const;
 
 export type DevoteeCsvField =
@@ -142,7 +171,7 @@ export type DevoteeCsvImportRow = {
   rowNumber: number;
   status: DevoteeCsvRowStatus;
   values: Partial<Record<DevoteeCsvField, string>>;
-  parsedData: DevoteeCreateInput | null;
+  parsedData: DevoteeProfileCreateInput | null;
   errors: string[];
   warnings: string[];
 };
@@ -301,7 +330,7 @@ function validationMessagesForRow(error: {
 }
 function buildIdentityKey(
   values: Pick<
-    DevoteeCreateInput,
+    DevoteeProfileCreateInput,
     "full_name" | "birth_date" | "father_name" | "mother_name"
   >,
 ) {
@@ -422,7 +451,7 @@ export function parseDevoteeCsv(text: string): DevoteeCsvImportPreview {
         ? normalizeDateValue(value)
         : value;
     }
-    const parsed = devoteeCreateSchema.safeParse(values);
+    const parsed = devoteeProfileCreateSchema.safeParse(values);
     const baseRow = {
       rowNumber: headerIndex + index + 2,
       values,

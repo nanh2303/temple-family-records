@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { devoteeCreateSchema, devoteeUpdateSchema } from "@/lib/validations/devotee";
-import type { DevoteeRecord } from "@/types/devotee";
+import { devoteeProfileCreateSchema, devoteeProfileUpdateSchema } from "@/lib/validations/devotee";
+import type { DevoteeAfterlifeInfo, DevoteeRecord } from "@/types/devotee";
 
 const DEVOTEE_FORM_FIELD_NAMES = [
   "family_registry_no",
@@ -28,12 +28,24 @@ const DEVOTEE_FORM_FIELD_NAMES = [
   "preceptor",
   "father_name",
   "mother_name",
+  "death_date",
+  "grave_location",
+  "afterlife_note",
 ] as const;
 
 type DevoteeFormFieldName = (typeof DEVOTEE_FORM_FIELD_NAMES)[number];
 type DevoteeFormValues = Record<DevoteeFormFieldName, string>;
 type DevoteeFormErrors = Partial<Record<DevoteeFormFieldName, string>>;
-type DevoteeFormInitialValues = Partial<Pick<DevoteeRecord, DevoteeFormFieldName>>;
+type DevoteeCoreFormFieldName = Exclude<
+  DevoteeFormFieldName,
+  "death_date" | "grave_location" | "afterlife_note"
+>;
+
+type DevoteeFormInitialValues = Partial<Pick<DevoteeRecord, DevoteeCoreFormFieldName>> & {
+  death_date?: DevoteeAfterlifeInfo["death_date"];
+  grave_location?: DevoteeAfterlifeInfo["grave_location"];
+  afterlife_note?: DevoteeAfterlifeInfo["note"];
+};
 
 type DevoteeFormProps =
   | {
@@ -90,11 +102,24 @@ const FORM_SECTIONS: { title: string; description?: string; fields: FieldConfig[
       { name: "mother_name", label: "Tên Mẹ" },
     ],
   },
+  {
+    title: "Hậu thế",
+    description: "Mục I trên mẫu Gia Phả — in ra PDF khi có dữ liệu.",
+    fields: [
+      { name: "death_date", label: "Tạ thế ngày", type: "date" },
+      { name: "grave_location", label: "Mộ chí tại" },
+      { name: "afterlife_note", label: "Ghi chú" },
+    ],
+  },
 ];
 
 function buildInitialValues(initialValues?: DevoteeFormInitialValues): DevoteeFormValues {
   return DEVOTEE_FORM_FIELD_NAMES.reduce((values, fieldName) => {
-    values[fieldName] = initialValues?.[fieldName] ?? "";
+    if (fieldName === "afterlife_note") {
+      values[fieldName] = initialValues?.afterlife_note ?? "";
+      return values;
+    }
+    values[fieldName] = (initialValues?.[fieldName as keyof DevoteeFormInitialValues] as string | null | undefined) ?? "";
     return values;
   }, {} as DevoteeFormValues);
 }
@@ -135,7 +160,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
     setErrors({});
     setMessage(null);
 
-    const schema = props.mode === "create" ? devoteeCreateSchema : devoteeUpdateSchema;
+    const schema = props.mode === "create" ? devoteeProfileCreateSchema : devoteeProfileUpdateSchema;
     const parsed = schema.safeParse(values);
 
     if (!parsed.success) {
@@ -196,7 +221,14 @@ export function DevoteeForm(props: DevoteeFormProps) {
               const inputId = `devotee-${field.name}`;
 
               return (
-                <div key={field.name} className={field.name === "address" ? "space-y-2 sm:col-span-2" : "space-y-2"}>
+                <div
+                  key={field.name}
+                  className={
+                    field.name === "address" || field.name === "grave_location" || field.name === "afterlife_note"
+                      ? "space-y-2 sm:col-span-2"
+                      : "space-y-2"
+                  }
+                >
                   <Label htmlFor={inputId}>{field.label}</Label>
                   <Input
                     id={inputId}

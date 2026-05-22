@@ -22,6 +22,11 @@ const optionalTextField = z.preprocess(
   z.string().max(500, "Must be 500 characters or fewer.").nullable().optional(),
 );
 
+const optionalLongTextField = z.preprocess(
+  normalizeString,
+  z.string().max(2000, "Must be 2000 characters or fewer.").nullable().optional(),
+);
+
 const optionalDateField = z.preprocess(
   normalizeString,
   z
@@ -48,16 +53,36 @@ export const devoteeCoreSchema = z.object({
   mother_name: optionalTextField,
 });
 
-export const devoteeCreateSchema = devoteeCoreSchema.strict();
+/** Section I — Hậu thế (stored in `devotee_afterlife_info`). */
+export const devoteeAfterlifeFormSchema = z.object({
+  death_date: optionalDateField,
+  grave_location: optionalTextField,
+  afterlife_note: optionalLongTextField,
+});
 
-export const devoteeUpdateSchema = devoteeCoreSchema
+export const devoteeProfileCreateSchema = devoteeCoreSchema.merge(devoteeAfterlifeFormSchema).strict();
+
+export const devoteeProfileUpdateSchema = devoteeProfileCreateSchema
   .partial()
   .strict()
   .refine((value) => Object.keys(value).length > 0, "At least one field is required.");
+
+/** @deprecated Use devoteeProfileCreateSchema */
+export const devoteeCreateSchema = devoteeProfileCreateSchema;
+
+/** @deprecated Use devoteeProfileUpdateSchema */
+export const devoteeUpdateSchema = devoteeProfileUpdateSchema;
 
 export const searchQuerySchema = z.object({
   q: z.string().max(500).optional().default(""),
 });
 
-export type DevoteeCreateInput = z.infer<typeof devoteeCreateSchema>;
-export type DevoteeUpdateInput = z.infer<typeof devoteeUpdateSchema>;
+export type DevoteeCoreInput = z.infer<typeof devoteeCoreSchema>;
+export type DevoteeAfterlifeFormInput = z.infer<typeof devoteeAfterlifeFormSchema>;
+export type DevoteeProfileCreateInput = z.infer<typeof devoteeProfileCreateSchema>;
+export type DevoteeProfileUpdateInput = z.infer<typeof devoteeProfileUpdateSchema>;
+
+/** @deprecated Use DevoteeProfileCreateInput */
+export type DevoteeCreateInput = DevoteeProfileCreateInput;
+/** @deprecated Use DevoteeProfileUpdateInput */
+export type DevoteeUpdateInput = DevoteeProfileUpdateInput;

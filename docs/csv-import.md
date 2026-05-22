@@ -34,6 +34,9 @@ Các field hiện được import vào bảng `devotees`:
 - `preceptor` — Bổn Sư truyền giới
 - `father_name` — Tên Cha
 - `mother_name` — Tên Mẹ
+- `death_date` — Tạ thế ngày (bảng `devotee_afterlife_info`)
+- `grave_location` — Mộ chí tại
+- `afterlife_note` — Ghi chú hậu thế
 
 Header có thể viết có dấu, không dấu, tiếng Anh, hoặc snake_case. Ví dụ `Họ và tên`, `ho ten`, `full_name`, `full name` đều map về `full_name`.
 
@@ -67,7 +70,7 @@ Các cảnh báo không chặn import:
 - Tối đa 10,000 dòng dữ liệu/lần import.
 - Tối đa 2MB/file CSV.
 - Preview UI hiển thị 200 dòng đầu tiên, nhưng summary vẫn tính trên toàn bộ file.
-- Import hiện chỉ ghi vào bảng chính `devotees`, chưa import các bảng phụ như training, roles, notes, afterlife.
+- Import ghi `devotees` và (khi có cột tương ứng) `devotee_afterlife_info`. Chưa import training, roles, notes.
 
 ## Ví dụ CSV
 

@@ -59,7 +59,7 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
         </div>
       </div>
 
-      <DevoteeProfileSection title="Lý lịch">{profileBasics(devotee)}</DevoteeProfileSection>
+      <DevoteeProfileSection title="Lý lịch">{profileBasics(devotee, afterlife)}</DevoteeProfileSection>
 
       <DevoteeProfileSection title="Tu học trường kỳ">
         {longTerm.length === 0 ? (
@@ -152,17 +152,6 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
         )}
       </DevoteeProfileSection>
 
-      <DevoteeProfileSection title="Hậu thế">
-        {afterlife ? (
-          <>
-            <ProfileField label="Ngày mất" value={afterlife.death_date} />
-            <ProfileField label="Nơi an táng / mộ phần" value={afterlife.grave_location} />
-            <ProfileField label="Ghi chú" value={afterlife.note} />
-          </>
-        ) : (
-          <p className="text-zinc-500">Chưa có dữ liệu.</p>
-        )}
-      </DevoteeProfileSection>
     </div>
   );
 }
