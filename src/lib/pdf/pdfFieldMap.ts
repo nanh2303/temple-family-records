@@ -38,6 +38,26 @@ export type MauGiaPhaStampAnchor = {
   maxWidth?: number;
 };
 
+export type MauGiaPhaImageAnchor = {
+  pageIndex: number;
+  /** Bottom-left x coordinate. */
+  x: number;
+  /** Bottom-left y coordinate. */
+  y: number;
+  /** Image width in PDF points. */
+  width: number;
+  /** Image height in PDF points. */
+  height: number;
+};
+
+export const MAU_GIA_PHA_PROFILE_PICTURE_ANCHOR: MauGiaPhaImageAnchor = {
+  pageIndex: 0,
+  x: 80,
+  y: 600,
+  width: 100,
+  height: 120,
+};
+
 export const MAU_GIA_PHA_STAMP_ANCHORS: Record<MauGiaPhaFieldKey, MauGiaPhaStampAnchor> = {
   familyRegistryNo: { pageIndex: 0, x: 241, y: 737.2, fontSize: 10, maxWidth: 110 },
   bhdRegistryNo: { pageIndex: 0, x: 464.3, y: 737.2, fontSize: 10, maxWidth: 130 },

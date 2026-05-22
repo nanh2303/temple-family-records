@@ -53,6 +53,7 @@ export const devoteeCoreSchema = z.object({
   preceptor: optionalTextField,
   father_name: optionalTextField,
   mother_name: optionalTextField,
+  profile_picture_url: z.string().url("Must be a valid URL.").nullable().optional(),
 });
 
 /** Section I — Hậu thế (stored in `devotee_afterlife_info`). */

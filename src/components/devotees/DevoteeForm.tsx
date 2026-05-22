@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Save, Trash2, X } from "lucide-react";
+import { Plus, Save, Trash2, X, Upload, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -51,6 +51,7 @@ const DEVOTEE_FORM_FIELD_NAMES = [
   "death_date",
   "grave_location",
   "afterlife_note",
+  "profile_picture_url",
 ] as const;
 
 const NOTE_SECTIONS = [
@@ -84,6 +85,7 @@ type DevoteeFormInitialValues = Partial<Pick<DevoteeRecord, DevoteeCoreFormField
   death_date?: DevoteeAfterlifeInfo["death_date"];
   grave_location?: DevoteeAfterlifeInfo["grave_location"];
   afterlife_note?: DevoteeAfterlifeInfo["note"];
+  profile_picture_url?: DevoteeRecord["profile_picture_url"];
   training?: DevoteeTrainingRecord[];
   roles?: DevoteeRole[];
   notes?: DevoteeNote[];
@@ -110,6 +112,10 @@ type FieldConfig = {
 };
 
 const FORM_SECTIONS: { title: string; description?: string; fields: FieldConfig[] }[] = [
+  {
+    title: "Ảnh đại diện",
+    fields: [],
+  },
   {
     title: "Thông tin danh bộ",
     fields: [
@@ -159,6 +165,10 @@ function buildInitialValues(initialValues?: DevoteeFormInitialValues): DevoteeFo
   return DEVOTEE_FORM_FIELD_NAMES.reduce((values, fieldName) => {
     if (fieldName === "afterlife_note") {
       values[fieldName] = initialValues?.afterlife_note ?? "";
+      return values;
+    }
+    if (fieldName === "profile_picture_url") {
+      values[fieldName] = initialValues?.profile_picture_url ?? "";
       return values;
     }
     values[fieldName] = (initialValues?.[fieldName as keyof DevoteeFormInitialValues] as string | null | undefined) ?? "";
@@ -274,6 +284,11 @@ export function DevoteeForm(props: DevoteeFormProps) {
   const [errors, setErrors] = useState<DevoteeFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [uploadPictureError, setUploadPictureError] = useState<string | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
+    props.initialValues?.profile_picture_url || null,
+  );
 
   const cancelHref = props.cancelHref ?? (props.mode === "edit" ? `/devotees/${props.devoteeId}` : "/devotees");
 
@@ -299,6 +314,77 @@ export function DevoteeForm(props: DevoteeFormProps) {
       ...current,
       [noteType]: current[noteType].map((note, noteIndex) => (noteIndex === index ? { content: value } : note)),
     }));
+  }
+
+  async function handleProfilePictureUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (props.mode !== "edit") {
+      setUploadPictureError("You can only upload a profile picture when editing an existing devotee record.");
+      return;
+    }
+
+    setUploadingPicture(true);
+    setUploadPictureError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`/api/devotees/${props.devoteeId}/upload-picture`, {
+        method: "POST",
+        credentials: "same-origin",
+        body: formData,
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(data?.error ?? `Upload failed (${response.status})`);
+      }
+
+      if (!data?.url) {
+        throw new Error("No URL returned from upload");
+      }
+
+      setValues((current) => ({ ...current, profile_picture_url: data.url || ""}));
+      setProfilePicturePreview(data.url);
+    } catch (error) {
+      setUploadPictureError(error instanceof Error ? error.message : "Failed to upload profile picture");
+    } finally {
+      setUploadingPicture(false);
+      // Reset input
+      event.target.value = "";
+    }
+  }
+
+  async function handleRemoveProfilePicture() {
+    if (props.mode !== "edit") return;
+
+    setUploadingPicture(true);
+    setUploadPictureError(null);
+
+    try {
+      const response = await fetch(`/api/devotees/${props.devoteeId}/upload-picture`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? `Delete failed (${response.status})`);
+      }
+
+      setValues((current) => ({ ...current, profile_picture_url: "" }));
+      setProfilePicturePreview(null);
+    } catch (error) {
+      setUploadPictureError(error instanceof Error ? error.message : "Failed to delete profile picture");
+    } finally {
+      setUploadingPicture(false);
+    }
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -362,48 +448,107 @@ export function DevoteeForm(props: DevoteeFormProps) {
         </p>
       ) : null}
 
-      {FORM_SECTIONS.map((section) => (
-        <Card key={section.title}>
-          <CardHeader>
-            <CardTitle>{section.title}</CardTitle>
-            {section.description ? <CardDescription>{section.description}</CardDescription> : null}
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            {section.fields.map((field) => {
-              const error = errors[field.name];
-              const inputId = `devotee-${field.name}`;
-
-              return (
-                <div
-                  key={field.name}
-                  className={
-                    field.name === "address" || field.name === "grave_location" || field.name === "afterlife_note"
-                      ? "space-y-2 sm:col-span-2"
-                      : "space-y-2"
-                  }
-                >
-                  <Label htmlFor={inputId}>{field.label}</Label>
+      {FORM_SECTIONS.map((section) => {
+        // Special handling for profile picture section
+        if (section.title === "Ảnh đại diện") {
+          return (
+            <Card key={section.title}>
+              <CardHeader>
+                <CardTitle>{section.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {uploadPictureError ? (
+                  <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {uploadPictureError}
+                  </p>
+                ) : null}
+                {profilePicturePreview ? (
+                  <div className="space-y-2">
+                    <div className="relative inline-block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={profilePicturePreview}
+                        alt="Profile"
+                        className="h-32 w-32 rounded-lg object-cover"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  <Label htmlFor="profile-picture-input">
+                    {profilePicturePreview ? "Thay đổi ảnh đại diện" : "Tải lên ảnh đại diện"}
+                  </Label>
                   <Input
-                    id={inputId}
-                    name={field.name}
-                    type={field.type ?? "text"}
-                    required={field.required}
-                    value={values[field.name]}
-                    aria-invalid={error ? "true" : "false"}
-                    aria-describedby={error ? `${inputId}-error` : undefined}
-                    onChange={(event) => updateField(field.name, event.target.value)}
+                    id="profile-picture-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={uploadingPicture || props.mode === "create"}
+                    onChange={handleProfilePictureUpload}
                   />
-                  {error ? (
-                    <p id={`${inputId}-error`} className="text-xs text-red-600">
-                      {error}
-                    </p>
-                  ) : null}
+                  <p className="text-xs text-zinc-500">
+                    Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB. {props.mode === "create" ? "Vui lòng lưu hồ sơ trước khi tải ảnh." : ""}
+                  </p>
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ))}
+                {profilePicturePreview ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingPicture}
+                    onClick={handleRemoveProfilePicture}
+                  >
+                    {uploadingPicture ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+                    Xóa ảnh đại diện
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
+          );
+        }
+
+        return (
+          <Card key={section.title}>
+            <CardHeader>
+              <CardTitle>{section.title}</CardTitle>
+              {section.description ? <CardDescription>{section.description}</CardDescription> : null}
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              {section.fields.map((field) => {
+                const error = errors[field.name];
+                const inputId = `devotee-${field.name}`;
+
+                return (
+                  <div
+                    key={field.name}
+                    className={
+                      field.name === "address" || field.name === "grave_location" || field.name === "afterlife_note"
+                        ? "space-y-2 sm:col-span-2"
+                        : "space-y-2"
+                    }
+                  >
+                    <Label htmlFor={inputId}>{field.label}</Label>
+                    <Input
+                      id={inputId}
+                      name={field.name}
+                      type={field.type ?? "text"}
+                      required={field.required}
+                      value={values[field.name]}
+                      aria-invalid={error ? "true" : "false"}
+                      aria-describedby={error ? `${inputId}-error` : undefined}
+                      onChange={(event) => updateField(field.name, event.target.value)}
+                    />
+                    {error ? (
+                      <p id={`${inputId}-error`} className="text-xs text-red-600">
+                        {error}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        );
+      })}
 
       {TRAINING_CATEGORY_ORDER.map((category) => (
         <Card key={category}>
