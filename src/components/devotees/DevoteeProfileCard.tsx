@@ -28,9 +28,26 @@ export function ProfileField({ label, value }: FieldProps) {
   );
 }
 
+type ProfilePictureProps = { url: string | null | undefined };
+
+export function ProfilePicture({ url }: ProfilePictureProps) {
+  if (!url) return null;
+  return (
+    <div className="flex justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt="Profile picture"
+        className="h-48 w-48 rounded-lg object-cover shadow-md"
+      />
+    </div>
+  );
+}
+
 export function profileBasics(devotee: DevoteeRecord, afterlife?: DevoteeAfterlifeInfo | null) {
   return (
     <>
+      {devotee.profile_picture_url ? <ProfilePicture url={devotee.profile_picture_url} /> : null}
       <ProfileField label="Số danh bộ gia đình" value={devotee.family_registry_no} />
       <ProfileField label="Số danh bộ BHD" value={devotee.bhd_registry_no} />
       <ProfileField label="Họ và tên" value={devotee.full_name} />

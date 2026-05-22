@@ -17,7 +17,7 @@ export function AdminSignOutButton() {
 
   return (
     <Button type="button" variant="outline" size="sm" onClick={() => void signOut()}>
-      Sign out
+      Đăng xuất
     </Button>
   );
 }

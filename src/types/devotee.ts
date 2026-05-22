@@ -7,6 +7,7 @@ export type DevoteeSearchRow = {
   birth_date: string | null;
   hometown: string | null;
   address: string | null;
+  profile_picture_url: string | null;
   rank_score: number;
 };
 
@@ -31,6 +32,7 @@ export type DevoteeRecord = {
   preceptor: string | null;
   father_name: string | null;
   mother_name: string | null;
+  profile_picture_url: string | null;
   search_text: string;
   created_at: string;
   updated_at: string;

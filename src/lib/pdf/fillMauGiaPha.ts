@@ -16,6 +16,7 @@ import {
   MAU_GIA_PHA_LINE_SECTIONS,
   MAU_GIA_PHA_TRAINING_ANCHORS,
   MAU_GIA_PHA_TEMPLATE_FILENAME,
+  MAU_GIA_PHA_PROFILE_PICTURE_ANCHOR,
   type MauGiaPhaLineSection,
   type MauGiaPhaFieldKey,
   type MauGiaPhaStampAnchor,
@@ -42,6 +43,18 @@ async function embedVietnameseFont(pdf: PDFDocument, stampText: string) {
   }
 
   return font;
+}
+
+async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const buffer = await response.arrayBuffer();
+    return new Uint8Array(buffer);
+  } catch (error) {
+    console.error("Failed to fetch image:", url, error);
+    return null;
+  }
 }
 
 function getStampValues(profile: DevoteeProfileBundle): Record<MauGiaPhaFieldKey, string> {
@@ -202,6 +215,45 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
       ]),
     );
     const pages = pdf.getPages();
+
+    // Embed profile picture if available
+    if (devotee.profile_picture_url) {
+      const imageBytes = await fetchImageBytes(devotee.profile_picture_url);
+      if (imageBytes) {
+        try {
+          const anchor = MAU_GIA_PHA_PROFILE_PICTURE_ANCHOR;
+          const page = pages[anchor.pageIndex];
+          if (page) {
+            let image;
+            // Detect image type and embed accordingly
+            if (imageBytes[0] === 0xff && imageBytes[1] === 0xd8) {
+              // JPEG
+              image = await pdf.embedJpg(imageBytes);
+            } else if (
+              imageBytes[0] === 0x89 &&
+              imageBytes[1] === 0x50 &&
+              imageBytes[2] === 0x4e &&
+              imageBytes[3] === 0x47
+            ) {
+              // PNG
+              image = await pdf.embedPng(imageBytes);
+            }
+
+            if (image) {
+              page.drawImage(image, {
+                x: anchor.x,
+                y: anchor.y,
+                width: anchor.width,
+                height: anchor.height,
+              });
+            }
+          }
+        } catch (imageError) {
+          console.error("Failed to embed profile picture:", imageError);
+          // Continue without image rather than failing
+        }
+      }
+    }
 
     for (const [fieldKey, anchor] of Object.entries(MAU_GIA_PHA_STAMP_ANCHORS) as [
       MauGiaPhaFieldKey,
