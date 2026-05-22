@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEVOTEE_TRAINING_RECORD_KEYS } from "@/lib/devotees/profile-sections";
+
 export const devoteeUuidSchema = z.string().uuid();
 
 function normalizeString(value: unknown) {
@@ -60,7 +62,45 @@ export const devoteeAfterlifeFormSchema = z.object({
   afterlife_note: optionalLongTextField,
 });
 
-export const devoteeProfileCreateSchema = devoteeCoreSchema.merge(devoteeAfterlifeFormSchema).strict();
+export const devoteeTrainingFormRecordSchema = z
+  .object({
+    key: z.enum(DEVOTEE_TRAINING_RECORD_KEYS),
+    completed_date: optionalDateField,
+    decision_no: optionalTextField,
+  })
+  .strict()
+  .refine(
+    (value) => Boolean(value.completed_date || value.decision_no),
+    "Training rows need a date or decision number.",
+  );
+
+export const devoteeRoleFormRecordSchema = z
+  .object({
+    role_title: z.string().trim().min(1, "Role title is required.").max(500, "Must be 500 characters or fewer."),
+    organization: optionalTextField,
+    start_date: optionalDateField,
+    end_date: optionalDateField,
+    note: optionalTextField,
+  })
+  .strict();
+
+export const devoteeNoteFormRecordSchema = z
+  .object({
+    note_type: z.enum(["achievement", "comment", "other"]),
+    content: z.string().trim().min(1, "Note content is required.").max(2000, "Must be 2000 characters or fewer."),
+  })
+  .strict();
+
+export const devoteeRelatedRecordsFormSchema = z.object({
+  training_records: z.array(devoteeTrainingFormRecordSchema).optional(),
+  roles: z.array(devoteeRoleFormRecordSchema).optional(),
+  notes: z.array(devoteeNoteFormRecordSchema).optional(),
+});
+
+export const devoteeProfileCreateSchema = devoteeCoreSchema
+  .merge(devoteeAfterlifeFormSchema)
+  .merge(devoteeRelatedRecordsFormSchema)
+  .strict();
 
 export const devoteeProfileUpdateSchema = devoteeProfileCreateSchema
   .partial()
@@ -79,6 +119,9 @@ export const searchQuerySchema = z.object({
 
 export type DevoteeCoreInput = z.infer<typeof devoteeCoreSchema>;
 export type DevoteeAfterlifeFormInput = z.infer<typeof devoteeAfterlifeFormSchema>;
+export type DevoteeTrainingFormRecordInput = z.infer<typeof devoteeTrainingFormRecordSchema>;
+export type DevoteeRoleFormRecordInput = z.infer<typeof devoteeRoleFormRecordSchema>;
+export type DevoteeNoteFormRecordInput = z.infer<typeof devoteeNoteFormRecordSchema>;
 export type DevoteeProfileCreateInput = z.infer<typeof devoteeProfileCreateSchema>;
 export type DevoteeProfileUpdateInput = z.infer<typeof devoteeProfileUpdateSchema>;
 

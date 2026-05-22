@@ -25,4 +25,4 @@
 
 ## CRUD flow
 
-Create and edit pages use `src/components/devotees/DevoteeForm.tsx`, which validates the supported fields with zod before calling JSON API routes. Empty optional text and date inputs normalize to `null` before database writes, and unknown fields are rejected by strict schemas. Delete uses `DeleteDevoteeButton` with confirmation and redirects back to `/devotees`.
+Create and edit pages use `src/components/devotees/DevoteeForm.tsx`, which validates the supported fields with zod before calling JSON API routes. The form now saves the core devotee row plus afterlife info, fixed training/camp/ordination rows, roles, achievements, and comments. Empty optional text and date inputs normalize to `null` before database writes, and unknown fields are rejected by strict schemas. Delete uses `DeleteDevoteeButton` with confirmation and redirects back to `/devotees`.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { splitDevoteeProfilePayload, upsertDevoteeAfterlife } from "@/lib/data/devotee-afterlife";
+import { saveDevoteeProfileRelatedRecords, splitDevoteeProfilePayload } from "@/lib/data/devotee-afterlife";
 import {
   applyDevoteeCsvDuplicateChecks,
   getImportableRows,
@@ -66,7 +66,7 @@ async function insertInBatches(
   for (let start = 0; start < rows.length; start += INSERT_BATCH_SIZE) {
     const batch = rows
       .slice(start, start + INSERT_BATCH_SIZE)
-      .flatMap((row) => (row.parsedData ? [{ row, payload: splitDevoteeProfilePayload(row.parsedData) }] : []));
+      .flatMap((row) => (row.parsedData ? [{ payload: splitDevoteeProfilePayload(row.parsedData) }] : []));
 
     if (batch.length === 0) continue;
 
@@ -79,12 +79,10 @@ async function insertInBatches(
     const created = data ?? [];
     for (let index = 0; index < batch.length; index += 1) {
       const createdDevotee = created[index];
-      const { afterlife } = batch[index].payload;
+      const { related } = batch[index].payload;
       if (!createdDevotee) continue;
 
-      if (afterlife) {
-        await upsertDevoteeAfterlife(supabase, createdDevotee.id, afterlife);
-      }
+      await saveDevoteeProfileRelatedRecords(supabase, createdDevotee.id, related);
 
       inserted.push(createdDevotee);
     }

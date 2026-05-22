@@ -4,7 +4,9 @@ import { ZodError } from "zod";
 import {
   extractAfterlifeFromPatch,
   extractDevoteeCorePatch,
+  extractRelatedRecordsFromPatch,
   hasAfterlifeContent,
+  saveDevoteeProfileRelatedRecords,
   upsertDevoteeAfterlife,
 } from "@/lib/data/devotee-afterlife";
 import { fetchDevoteeProfile } from "@/lib/data/devotee-profile";
@@ -69,6 +71,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const devoteePatch = extractDevoteeCorePatch(parsed.data);
   const afterlifePatch = extractAfterlifeFromPatch(parsed.data);
+  const relatedPatch = extractRelatedRecordsFromPatch(parsed.data);
 
   const { data: existingDevotee, error: existingError } = await supabase
     .from("devotees")
@@ -134,6 +137,15 @@ export async function PATCH(request: Request, context: RouteContext) {
         { status: 500 },
       );
     }
+  }
+
+  try {
+    await saveDevoteeProfileRelatedRecords(supabase, parsedId.data, relatedPatch);
+  } catch (relatedError) {
+    return NextResponse.json(
+      { error: relatedError instanceof Error ? relatedError.message : "Failed to save profile details." },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ devotee });

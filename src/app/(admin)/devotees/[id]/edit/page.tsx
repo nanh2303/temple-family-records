@@ -39,6 +39,9 @@ export default async function EditDevoteePage({ params }: PageProps) {
           death_date: profile.afterlife?.death_date,
           grave_location: profile.afterlife?.grave_location,
           afterlife_note: profile.afterlife?.note,
+          training: profile.training,
+          roles: profile.roles,
+          notes: profile.notes,
         }}
         cancelHref={`/devotees/${id}`}
       />

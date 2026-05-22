@@ -12,7 +12,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Bảng điều khiển</h1>
         <p className="mt-1 text-sm text-zinc-600">Tổng quan nhanh và tra cứu đạo hữu.</p>
       </div>
       <Card>
@@ -25,7 +25,7 @@ export default function DashboardPage() {
           <p className="mt-3 text-sm text-zinc-600">
             Hoặc mở trực tiếp{" "}
             <Link href="/devotees" className="font-medium text-zinc-900 underline underline-offset-2">
-              trang Devotees
+              trang Đạo hữu
             </Link>
             .
           </p>

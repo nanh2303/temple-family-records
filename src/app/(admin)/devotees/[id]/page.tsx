@@ -4,10 +4,63 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DeleteDevoteeButton } from "@/components/devotees/DeleteDevoteeButton";
-import { DevoteeProfileSection, ProfileField, profileBasics } from "@/components/devotees/DevoteeProfileCard";
+import { DevoteeProfileSection, profileBasics } from "@/components/devotees/DevoteeProfileCard";
 import { PrintFormSelectorButton } from "@/components/devotees/PrintFormSelectorButton";
 import { Button } from "@/components/ui/button";
 import { fetchDevoteeProfile } from "@/lib/data/devotee-profile";
+import {
+  DEVOTEE_TRAINING_CATEGORIES,
+  DEVOTEE_TRAINING_RECORD_DEFINITIONS,
+  getTrainingRecordDefinitionForRecord,
+  type DevoteeTrainingCategory,
+  type DevoteeTrainingRecordKey,
+} from "@/lib/devotees/profile-sections";
+import type { DevoteeTrainingRecord } from "@/types/devotee";
+
+const TRAINING_CATEGORY_ORDER: DevoteeTrainingCategory[] = ["long_term", "camp", "ordination_level"];
+
+function buildTrainingRecordMap(training: DevoteeTrainingRecord[]) {
+  const byKey = new Map<DevoteeTrainingRecordKey, DevoteeTrainingRecord>();
+  const custom: DevoteeTrainingRecord[] = [];
+
+  for (const record of training) {
+    const definition = getTrainingRecordDefinitionForRecord(record);
+    if (definition) {
+      byKey.set(definition.key, record);
+    } else {
+      custom.push(record);
+    }
+  }
+
+  return { byKey, custom };
+}
+
+function TrainingRows({
+  category,
+  records,
+}: {
+  category: DevoteeTrainingCategory;
+  records: Map<DevoteeTrainingRecordKey, DevoteeTrainingRecord>;
+}) {
+  const definitions = DEVOTEE_TRAINING_RECORD_DEFINITIONS.filter((definition) => definition.category === category);
+  return (
+    <div className="space-y-2">
+      {definitions.map((definition) => {
+        const record = records.get(definition.key);
+        return (
+          <div
+            key={definition.key}
+            className="grid gap-1 border-b border-zinc-100 pb-2 last:border-0 sm:grid-cols-[12rem_1fr_1fr]"
+          >
+            <span className="font-medium text-zinc-900">{definition.label}</span>
+            <span>Ngày: {record?.completed_date ?? "—"}</span>
+            <span>Quyết định số: {record?.decision_no ?? "—"}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -26,10 +79,7 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
   }
 
   const { devotee, training, roles, notes, afterlife } = profile;
-
-  const longTerm = training.filter((t) => t.category === "long_term");
-  const camps = training.filter((t) => t.category === "camp");
-  const capDaTho = training.filter((t) => t.category === "ordination_level");
+  const trainingRecordMap = buildTrainingRecordMap(training);
   const achievements = notes.filter((n) => n.note_type === "achievement");
   const comments = notes.filter((n) => n.note_type === "comment");
   const otherNotes = notes.filter((n) => n.note_type === "other");
@@ -61,12 +111,16 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
 
       <DevoteeProfileSection title="Lý lịch">{profileBasics(devotee, afterlife)}</DevoteeProfileSection>
 
-      <DevoteeProfileSection title="Tu học trường kỳ">
-        {longTerm.length === 0 ? (
-          <p className="text-zinc-500">Chưa có dữ liệu.</p>
-        ) : (
+      {TRAINING_CATEGORY_ORDER.map((category) => (
+        <DevoteeProfileSection key={category} title={DEVOTEE_TRAINING_CATEGORIES[category]}>
+          <TrainingRows category={category} records={trainingRecordMap.byKey} />
+        </DevoteeProfileSection>
+      ))}
+
+      {trainingRecordMap.custom.length > 0 ? (
+        <DevoteeProfileSection title="Tu học / huấn luyện khác">
           <ul className="list-inside list-disc space-y-1">
-            {longTerm.map((t) => (
+            {trainingRecordMap.custom.map((t) => (
               <li key={t.id}>
                 {t.title}
                 {t.completed_date ? ` — ${t.completed_date}` : ""}
@@ -74,38 +128,8 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
               </li>
             ))}
           </ul>
-        )}
-      </DevoteeProfileSection>
-
-      <DevoteeProfileSection title="Trại huấn luyện">
-        {camps.length === 0 ? (
-          <p className="text-zinc-500">Chưa có dữ liệu.</p>
-        ) : (
-          <ul className="list-inside list-disc space-y-1">
-            {camps.map((t) => (
-              <li key={t.id}>
-                {t.title}
-                {t.completed_date ? ` — ${t.completed_date}` : ""}
-              </li>
-            ))}
-          </ul>
-        )}
-      </DevoteeProfileSection>
-
-      <DevoteeProfileSection title="Cấp đã thọ">
-        {capDaTho.length === 0 ? (
-          <p className="text-zinc-500">Chưa có dữ liệu.</p>
-        ) : (
-          <ul className="list-inside list-disc space-y-1">
-            {capDaTho.map((t) => (
-              <li key={t.id}>
-                {t.title}
-                {t.completed_date ? ` — ${t.completed_date}` : ""}
-              </li>
-            ))}
-          </ul>
-        )}
-      </DevoteeProfileSection>
+        </DevoteeProfileSection>
+      ) : null}
 
       <DevoteeProfileSection title="Chức vụ từng đảm nhận">
         {roles.length === 0 ? (
@@ -151,7 +175,7 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
           </ul>
         )}
       </DevoteeProfileSection>
-
     </div>
   );
 }
+

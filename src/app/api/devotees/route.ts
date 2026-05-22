@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
-import { splitDevoteeProfilePayload, upsertDevoteeAfterlife } from "@/lib/data/devotee-afterlife";
+import { saveDevoteeProfileRelatedRecords, splitDevoteeProfilePayload } from "@/lib/data/devotee-afterlife";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { devoteeProfileCreateSchema } from "@/lib/validations/devotee";
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validationMessage(parsed.error) }, { status: 400 });
   }
 
-  const { devotee: devoteeInput, afterlife } = splitDevoteeProfilePayload(parsed.data);
+  const { devotee: devoteeInput, related } = splitDevoteeProfilePayload(parsed.data);
   const { data: devotee, error } = await supabase.from("devotees").insert(devoteeInput).select("*").single();
 
   if (error) {
@@ -34,13 +34,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (afterlife) {
-      await upsertDevoteeAfterlife(supabase, devotee.id, afterlife);
-    }
-  } catch (afterlifeError) {
+    await saveDevoteeProfileRelatedRecords(supabase, devotee.id, related);
+  } catch (relatedError) {
     await supabase.from("devotees").delete().eq("id", devotee.id);
     return NextResponse.json(
-      { error: afterlifeError instanceof Error ? afterlifeError.message : "Failed to save afterlife info." },
+      { error: relatedError instanceof Error ? relatedError.message : "Failed to save profile details." },
       { status: 500 },
     );
   }

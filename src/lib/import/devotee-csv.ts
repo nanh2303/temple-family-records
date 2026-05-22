@@ -1,5 +1,9 @@
 import { normalizeVietnameseClient } from "@/lib/search/normalizeVietnamese";
 import {
+  DEVOTEE_TRAINING_RECORD_DEFINITIONS,
+  type DevoteeTrainingRecordKey,
+} from "@/lib/devotees/profile-sections";
+import {
   devoteeProfileCreateSchema,
   type DevoteeProfileCreateInput,
 } from "@/lib/validations/devotee";
@@ -7,6 +11,43 @@ import type { DevoteeRecord } from "@/types/devotee";
 
 export const MAX_CSV_IMPORT_ROWS = 10_000;
 export const CSV_PREVIEW_ROW_LIMIT = 200;
+
+type DevoteeCoreCsvField =
+  | "family_registry_no"
+  | "bhd_registry_no"
+  | "full_name"
+  | "birth_date"
+  | "birth_place"
+  | "dharma_name"
+  | "hometown"
+  | "address"
+  | "joined_unit_date"
+  | "vow_date"
+  | "refuge_date"
+  | "preceptor"
+  | "father_name"
+  | "mother_name"
+  | "death_date"
+  | "grave_location"
+  | "afterlife_note";
+
+export type DevoteeTrainingDateCsvField = `${DevoteeTrainingRecordKey}_date`;
+export type DevoteeTrainingDecisionCsvField = `${DevoteeTrainingRecordKey}_decision_no`;
+
+export type DevoteeCsvField =
+  | DevoteeCoreCsvField
+  | DevoteeTrainingDateCsvField
+  | DevoteeTrainingDecisionCsvField
+  | "roles"
+  | "achievements"
+  | "comments"
+  | "other_notes";
+
+type DevoteeCsvFieldConfig = {
+  field: DevoteeCsvField;
+  label: string;
+  examples: readonly string[];
+};
 
 export const DEVOTEE_CSV_FIELD_CONFIG = [
   {
@@ -149,10 +190,43 @@ export const DEVOTEE_CSV_FIELD_CONFIG = [
     label: "Ghi chú hậu thế",
     examples: ["ghi chu hau the", "ghi chú hậu thế", "afterlife_note", "afterlife note"],
   },
-] as const;
-
-export type DevoteeCsvField =
-  (typeof DEVOTEE_CSV_FIELD_CONFIG)[number]["field"];
+  ...DEVOTEE_TRAINING_RECORD_DEFINITIONS.flatMap((definition) => [
+    {
+      field: `${definition.key}_date` as DevoteeTrainingDateCsvField,
+      label: `${definition.label} - Ngày`,
+      examples: [`${definition.label} ngày`, `${definition.key}_date`, `${definition.key} date`],
+    },
+    {
+      field: `${definition.key}_decision_no` as DevoteeTrainingDecisionCsvField,
+      label: `${definition.label} - Quyết định số`,
+      examples: [
+        `${definition.label} quyết định số`,
+        `${definition.key}_decision_no`,
+        `${definition.key} decision no`,
+      ],
+    },
+  ]),
+  {
+    field: "roles",
+    label: "Các chức vụ từng đảm nhận",
+    examples: ["chuc vu", "chức vụ", "roles", "positions"],
+  },
+  {
+    field: "achievements",
+    label: "Thành tích cá nhân",
+    examples: ["thanh tich", "thành tích", "achievements"],
+  },
+  {
+    field: "comments",
+    label: "Các nhận xét khác",
+    examples: ["nhan xet", "nhận xét", "comments"],
+  },
+  {
+    field: "other_notes",
+    label: "Ghi chú khác",
+    examples: ["ghi chu khac", "ghi chú khác", "other_notes", "other notes"],
+  },
+] satisfies readonly DevoteeCsvFieldConfig[];
 
 export type ExistingDevoteeForImport = Pick<
   DevoteeRecord,
@@ -312,6 +386,73 @@ function normalizeDateValue(value: string) {
   const [, day, month, year] = match;
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
+function getTrainingDateKey(field: DevoteeCsvField): DevoteeTrainingRecordKey | null {
+  if (!field.endsWith("_date")) return null;
+  const key = field.slice(0, -"_date".length);
+  return DEVOTEE_TRAINING_RECORD_DEFINITIONS.some((definition) => definition.key === key)
+    ? (key as DevoteeTrainingRecordKey)
+    : null;
+}
+function getTrainingDecisionKey(field: DevoteeCsvField): DevoteeTrainingRecordKey | null {
+  if (!field.endsWith("_decision_no")) return null;
+  const key = field.slice(0, -"_decision_no".length);
+  return DEVOTEE_TRAINING_RECORD_DEFINITIONS.some((definition) => definition.key === key)
+    ? (key as DevoteeTrainingRecordKey)
+    : null;
+}
+function splitListCell(value: string | undefined) {
+  if (!value) return [];
+  return value
+    .split(/\r?\n|;/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+function buildProfileInputFromCsvValues(values: Partial<Record<DevoteeCsvField, string>>) {
+  const input: Record<string, unknown> = {};
+  const trainingRecords = new Map<DevoteeTrainingRecordKey, { completed_date: string; decision_no: string }>();
+
+  for (const [field, rawValue] of Object.entries(values) as [DevoteeCsvField, string][]) {
+    const trainingDateKey = getTrainingDateKey(field);
+    if (trainingDateKey) {
+      const current = trainingRecords.get(trainingDateKey) ?? { completed_date: "", decision_no: "" };
+      trainingRecords.set(trainingDateKey, { ...current, completed_date: rawValue });
+      continue;
+    }
+
+    const trainingDecisionKey = getTrainingDecisionKey(field);
+    if (trainingDecisionKey) {
+      const current = trainingRecords.get(trainingDecisionKey) ?? { completed_date: "", decision_no: "" };
+      trainingRecords.set(trainingDecisionKey, { ...current, decision_no: rawValue });
+      continue;
+    }
+
+    if (field === "roles" || field === "achievements" || field === "comments" || field === "other_notes") {
+      continue;
+    }
+
+    input[field] = rawValue;
+  }
+
+  const training_records = DEVOTEE_TRAINING_RECORD_DEFINITIONS.flatMap((definition) => {
+    const record = trainingRecords.get(definition.key);
+    if (!record || (!record.completed_date && !record.decision_no)) return [];
+    return [{ key: definition.key, ...record }];
+  });
+
+  const notes = [
+    ...splitListCell(values.achievements).map((content) => ({ note_type: "achievement" as const, content })),
+    ...splitListCell(values.comments).map((content) => ({ note_type: "comment" as const, content })),
+    ...splitListCell(values.other_notes).map((content) => ({ note_type: "other" as const, content })),
+  ];
+
+  const roles = splitListCell(values.roles).map((role_title) => ({ role_title }));
+
+  if (training_records.length > 0) input.training_records = training_records;
+  if (roles.length > 0) input.roles = roles;
+  if (notes.length > 0) input.notes = notes;
+
+  return input;
+}
 function mapHeader(header: string): DevoteeCsvField | null {
   return FIELD_BY_ALIAS.get(normalizeHeader(header)) ?? null;
 }
@@ -451,7 +592,9 @@ export function parseDevoteeCsv(text: string): DevoteeCsvImportPreview {
         ? normalizeDateValue(value)
         : value;
     }
-    const parsed = devoteeProfileCreateSchema.safeParse(values);
+    const parsed = devoteeProfileCreateSchema.safeParse(
+      buildProfileInputFromCsvValues(values),
+    );
     const baseRow = {
       rowNumber: headerIndex + index + 2,
       values,
