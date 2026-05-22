@@ -1,65 +1,61 @@
 /**
- * Maps logical devotee fields to PDF form field names or stamping anchors.
+ * Coordinate map for Mau Gia Pha So 05 (static PDF — no AcroForm fields).
  *
- * TODO: Open `public/templates/MauGiaPha-So-05.BHDTU.pdf` in a PDF editor, list AcroForm field
- * names (if the template is fillable), and replace the placeholder keys below. If the template
- * is not AcroForm-based, use `STAMP_COORDINATES` with page-indexed `{ x, y }` in PDF points and
- * implement stamping in `fillMauGiaPha.ts`.
+ * Positions were taken from dotted-line anchors in
+ * `public/templates/5.-MauGiaPha-So-05.BHDTU-PDF.pdf` via `node scripts/inspect-pdf-template.mjs`.
+ * Origin: bottom-left PDF user space (612×792 pt, US Letter).
  */
 
 export const MAU_GIA_PHA_TEMPLATE_FILENAME = "5.-MauGiaPha-So-05.BHDTU-PDF.pdf" as const;
 
-/** AcroForm field names — placeholders until the real template is inspected. */
-export const MAU_GIA_PHA_ACROFORM_FIELDS = {
-  familyRegistryNo: "TODO_family_registry_no",
-  bhdRegistryNo: "TODO_bhd_registry_no",
-  fullName: "TODO_full_name",
-  birthDate: "TODO_birth_date",
-  birthPlace: "TODO_birth_place",
-  dharmaName: "TODO_dharma_name",
-  address: "TODO_address",
-  joinedUnitDate: "TODO_joined_unit_date",
-  vowDate: "TODO_vow_date",
-  refugeDate: "TODO_refuge_date",
-  preceptor: "TODO_preceptor",
-  fatherName: "TODO_father_name",
-  motherName: "TODO_mother_name",
-  deathDate: "TODO_death_date",
-  graveLocation: "TODO_grave_location",
-} as const;
+export type MauGiaPhaFieldKey =
+  | "familyRegistryNo"
+  | "bhdRegistryNo"
+  | "fullName"
+  | "birthDate"
+  | "birthPlace"
+  | "dharmaName"
+  | "address"
+  | "joinedUnitDate"
+  | "vowDate"
+  | "refugeDate"
+  | "preceptor"
+  | "fatherName"
+  | "motherName"
+  | "deathDate"
+  | "graveLocation";
 
-export type MauGiaPhaAcroformFieldKey = keyof typeof MAU_GIA_PHA_ACROFORM_FIELDS;
+export type MauGiaPhaStampAnchor = {
+  pageIndex: number;
+  /** Baseline x where the dotted fill line begins (after the label colon). */
+  x: number;
+  /** Text baseline y (matches label/dotted-line y in the template). */
+  y: number;
+  fontSize?: number;
+  /** Clip long values to the blank line width. */
+  maxWidth?: number;
+};
 
 /**
- * Optional coordinate-based stamping (bottom-left origin in PDF user space).
- * TODO: Calibrate against the official template once `MauGiaPha-So-05.BHDTU.pdf` is in place.
+ * Stamping anchors aligned to each blank line on the official template.
  */
-export const MAU_GIA_PHA_STAMP_COORDINATES: Partial<
-  Record<
-    MauGiaPhaAcroformFieldKey,
-    {
-      pageIndex: number;
-      x: number;
-      y: number;
-      fontSize?: number;
-    }
-  >
-> = {
-  familyRegistryNo: { pageIndex: 0, x: 165, y: 794, fontSize: 9 },
-  bhdRegistryNo: { pageIndex: 0, x: 435, y: 794, fontSize: 9 },
+export const MAU_GIA_PHA_STAMP_ANCHORS: Record<MauGiaPhaFieldKey, MauGiaPhaStampAnchor> = {
+  familyRegistryNo: { pageIndex: 0, x: 241, y: 737.2, fontSize: 10, maxWidth: 110 },
+  bhdRegistryNo: { pageIndex: 0, x: 464.3, y: 737.2, fontSize: 10, maxWidth: 130 },
 
-  fullName: { pageIndex: 0, x: 125, y: 760, fontSize: 9 },
-  birthDate: { pageIndex: 0, x: 160, y: 737, fontSize: 9 },
-  birthPlace: { pageIndex: 0, x: 125, y: 715, fontSize: 9 },
-  dharmaName: { pageIndex: 0, x: 125, y: 693, fontSize: 9 },
-  address: { pageIndex: 0, x: 125, y: 671, fontSize: 9 },
-  joinedUnitDate: { pageIndex: 0, x: 160, y: 649, fontSize: 9 },
-  vowDate: { pageIndex: 0, x: 160, y: 627, fontSize: 9 },
-  refugeDate: { pageIndex: 0, x: 160, y: 605, fontSize: 9 },
-  preceptor: { pageIndex: 0, x: 160, y: 583, fontSize: 9 },
-  fatherName: { pageIndex: 0, x: 125, y: 561, fontSize: 9 },
-  motherName: { pageIndex: 0, x: 125, y: 539, fontSize: 9 },
+  fullName: { pageIndex: 0, x: 224.3, y: 695.7, fontSize: 10, maxWidth: 370 },
+  birthDate: { pageIndex: 0, x: 222, y: 680, fontSize: 10, maxWidth: 370 },
+  birthPlace: { pageIndex: 0, x: 224.3, y: 664.3, fontSize: 10, maxWidth: 370 },
+  dharmaName: { pageIndex: 0, x: 224.3, y: 648.6, fontSize: 10, maxWidth: 370 },
+  address: { pageIndex: 0, x: 224.3, y: 632.9, fontSize: 10, maxWidth: 370 },
+  joinedUnitDate: { pageIndex: 0, x: 224.3, y: 617.3, fontSize: 10, maxWidth: 370 },
+  vowDate: { pageIndex: 0, x: 224.3, y: 601.6, fontSize: 10, maxWidth: 370 },
+  refugeDate: { pageIndex: 0, x: 224.3, y: 585.9, fontSize: 10, maxWidth: 370 },
+  preceptor: { pageIndex: 0, x: 224.3, y: 570.2, fontSize: 10, maxWidth: 370 },
+  fatherName: { pageIndex: 0, x: 224.3, y: 554.5, fontSize: 10, maxWidth: 370 },
+  motherName: { pageIndex: 0, x: 224.3, y: 538.9, fontSize: 10, maxWidth: 370 },
 
-  deathDate: { pageIndex: 1, x: 120, y: 74, fontSize: 9 },
-  graveLocation: { pageIndex: 1, x: 120, y: 52, fontSize: 9 },
+  /** Page 2 — section I. HẬU THẾ (same x as other colon fields on the form). */
+  deathDate: { pageIndex: 1, x: 224.3, y: 116.1, fontSize: 10, maxWidth: 370 },
+  graveLocation: { pageIndex: 1, x: 224.3, y: 100.4, fontSize: 10, maxWidth: 370 },
 };
