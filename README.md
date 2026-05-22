@@ -7,7 +7,7 @@ Internal **Next.js** admin application for a Buddhist temple to maintain **devot
 - **Next.js 16** (App Router) + **TypeScript**
 - **Tailwind CSS v4** + shadcn-style UI primitives (`src/components/ui`)
 - **Supabase** (Postgres, Auth, RLS)
-- **pdf-lib** for PDF stamping / AcroForm fills
+- **pdf-lib** for coordinate-based PDF stamping on the static template
 - **Vercel** (recommended hosting)
 - **GitHub Actions** — CI on `dev` and `main`
 
@@ -48,7 +48,9 @@ Place the official file at:
 
 `public/templates/5.-MauGiaPha-So-05.BHDTU-PDF.pdf`
 
-If the file is missing, the PDF route still returns a **placeholder PDF** explaining what to add. Map AcroForm field names in `src/lib/pdf/pdfFieldMap.ts` after inspecting the template.
+If the file is missing, the PDF route still returns a **placeholder PDF** explaining what to add.
+
+The template is a **flat PDF** (no AcroForm fields). Field positions live in `src/lib/pdf/pdfFieldMap.ts` and are aligned to each dotted blank line. Text is normalized to Unicode NFC and drawn with the full Noto Sans font (not subset) so Vietnamese diacritics render reliably. To recalibrate after a template change, run `npm run pdf:inspect-template` and update the coordinates in `pdfFieldMap.ts`.
 
 The profile page uses `src/components/devotees/PrintFormSelectorButton.tsx` to open a template picker before generating a PDF. The current endpoint is:
 

@@ -21,7 +21,7 @@
 
 `src/lib/pdf/formTemplates.ts` is the client-safe registry of available print forms. The profile page imports that registry in `PrintFormSelectorButton`, shows a modal, and opens the PDF API only after an admin selects a template.
 
-`src/lib/pdf/pdfFieldMap.ts` documents AcroForm field names (TODOs until the real template is mapped). `src/lib/pdf/fillMauGiaPha.ts` loads `public/templates/5.-MauGiaPha-So-05.BHDTU-PDF.pdf` with `pdf-lib`, attempts field fills, and can fall back to coordinate stamping as coordinates are calibrated. Adding a future form means adding its template file, mapping/fill code, a registry entry, and one API route switch case; the profile UI stays unchanged.
+`src/lib/pdf/pdfFieldMap.ts` stores stamping anchors (page, x, y, maxWidth) measured from each dotted blank line on the static template. `src/lib/pdf/fillMauGiaPha.ts` loads `public/templates/5.-MauGiaPha-So-05.BHDTU-PDF.pdf` with `pdf-lib` and draws Vietnamese text with Noto Sans at those anchors. Run `npm run pdf:inspect-template` to re-extract label positions when the PDF changes. Adding a future form means adding its template file, mapping/fill code, a registry entry, and one API route switch case; the profile UI stays unchanged.
 
 ## CRUD flow
 
