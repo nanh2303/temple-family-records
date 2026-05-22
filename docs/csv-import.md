@@ -34,6 +34,23 @@ Các field hiện được import vào bảng `devotees`:
 - `preceptor` — Bổn Sư truyền giới
 - `father_name` — Tên Cha
 - `mother_name` — Tên Mẹ
+- `death_date` — Tạ thế ngày (bảng `devotee_afterlife_info`)
+- `grave_location` — Mộ chí tại
+- `afterlife_note` — Ghi chú hậu thế
+
+CSV cũng hỗ trợ các field cố định trên mẫu Gia Phả bằng cặp cột:
+
+- `<record_key>_date`
+- `<record_key>_decision_no`
+
+Ví dụ: `long_term_mo_mat_date`, `long_term_mo_mat_decision_no`, `camp_tuyet_son_date`, `ordination_tap_decision_no`.
+
+Các cột danh sách nhiều dòng:
+
+- `roles` — mỗi dòng hoặc mỗi mục phân tách bằng `;` được import thành một chức vụ.
+- `achievements` — mỗi dòng hoặc mỗi mục phân tách bằng `;` được import thành một thành tích cá nhân.
+- `comments` — mỗi dòng hoặc mỗi mục phân tách bằng `;` được import thành một nhận xét.
+- `other_notes` — mỗi dòng hoặc mỗi mục phân tách bằng `;` được import thành một ghi chú khác.
 
 Header có thể viết có dấu, không dấu, tiếng Anh, hoặc snake_case. Ví dụ `Họ và tên`, `ho ten`, `full_name`, `full name` đều map về `full_name`.
 
@@ -67,7 +84,7 @@ Các cảnh báo không chặn import:
 - Tối đa 10,000 dòng dữ liệu/lần import.
 - Tối đa 2MB/file CSV.
 - Preview UI hiển thị 200 dòng đầu tiên, nhưng summary vẫn tính trên toàn bộ file.
-- Import hiện chỉ ghi vào bảng chính `devotees`, chưa import các bảng phụ như training, roles, notes, afterlife.
+- Import ghi `devotees`, `devotee_afterlife_info`, các dòng tu học/huấn luyện/cấp đã thọ cố định trong `devotee_training_records`, `devotee_roles`, và `devotee_notes`.
 
 ## Ví dụ CSV
 

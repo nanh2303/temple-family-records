@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
+import {
+  extractAfterlifeFromPatch,
+  extractDevoteeCorePatch,
+  extractRelatedRecordsFromPatch,
+  hasAfterlifeContent,
+  saveDevoteeProfileRelatedRecords,
+  upsertDevoteeAfterlife,
+} from "@/lib/data/devotee-afterlife";
 import { fetchDevoteeProfile } from "@/lib/data/devotee-profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { devoteeUpdateSchema, devoteeUuidSchema } from "@/lib/validations/devotee";
+import { devoteeProfileUpdateSchema, devoteeUuidSchema } from "@/lib/validations/devotee";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -56,10 +64,14 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   // Authenticated users are treated as admins in this app. Add role-claim checks here before adding non-admin users.
   const body = await request.json().catch(() => null);
-  const parsed = devoteeUpdateSchema.safeParse(body);
+  const parsed = devoteeProfileUpdateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: validationMessage(parsed.error) }, { status: 400 });
   }
+
+  const devoteePatch = extractDevoteeCorePatch(parsed.data);
+  const afterlifePatch = extractAfterlifeFromPatch(parsed.data);
+  const relatedPatch = extractRelatedRecordsFromPatch(parsed.data);
 
   const { data: existingDevotee, error: existingError } = await supabase
     .from("devotees")
@@ -75,19 +87,65 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { data: devotee, error } = await supabase
-    .from("devotees")
-    .update(parsed.data)
-    .eq("id", parsedId.data)
-    .select("*")
-    .maybeSingle();
+  let devotee = existingDevotee;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (Object.keys(devoteePatch).length > 0) {
+    const { data: updatedDevotee, error } = await supabase
+      .from("devotees")
+      .update(devoteePatch)
+      .eq("id", parsedId.data)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!updatedDevotee) {
+      return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
+    }
+
+    devotee = updatedDevotee;
+  } else {
+    const { data: currentDevotee, error } = await supabase
+      .from("devotees")
+      .select("*")
+      .eq("id", parsedId.data)
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!currentDevotee) {
+      return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
+    }
+
+    devotee = currentDevotee;
   }
 
-  if (!devotee) {
-    return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
+  if (afterlifePatch !== undefined) {
+    try {
+      await upsertDevoteeAfterlife(
+        supabase,
+        parsedId.data,
+        hasAfterlifeContent(afterlifePatch) ? afterlifePatch : null,
+      );
+    } catch (afterlifeError) {
+      return NextResponse.json(
+        { error: afterlifeError instanceof Error ? afterlifeError.message : "Failed to save afterlife info." },
+        { status: 500 },
+      );
+    }
+  }
+
+  try {
+    await saveDevoteeProfileRelatedRecords(supabase, parsedId.data, relatedPatch);
+  } catch (relatedError) {
+    return NextResponse.json(
+      { error: relatedError instanceof Error ? relatedError.message : "Failed to save profile details." },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ devotee });

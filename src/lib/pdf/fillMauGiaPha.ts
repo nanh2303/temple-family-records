@@ -3,13 +3,20 @@ import fontkit from "@pdf-lib/fontkit";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  getTrainingRecordDefinitionForRecord,
+  type DevoteeTrainingRecordKey,
+} from "@/lib/devotees/profile-sections";
 import type { DevoteeProfileBundle } from "@/types/devotee";
 
 import { fitSingleLineText } from "./fitPdfText";
 import { collectPdfStampText, preparePdfText } from "./preparePdfText";
 import {
   MAU_GIA_PHA_STAMP_ANCHORS,
+  MAU_GIA_PHA_LINE_SECTIONS,
+  MAU_GIA_PHA_TRAINING_ANCHORS,
   MAU_GIA_PHA_TEMPLATE_FILENAME,
+  type MauGiaPhaLineSection,
   type MauGiaPhaFieldKey,
   type MauGiaPhaStampAnchor,
 } from "./pdfFieldMap";
@@ -59,6 +66,43 @@ function getStampValues(profile: DevoteeProfileBundle): Record<MauGiaPhaFieldKey
   };
 }
 
+function getTrainingStampValues(profile: DevoteeProfileBundle) {
+  const values = new Map<DevoteeTrainingRecordKey, { completedDate: string; decisionNo: string }>();
+
+  for (const record of profile.training) {
+    const definition = getTrainingRecordDefinitionForRecord(record);
+    if (!definition) continue;
+
+    values.set(definition.key, {
+      completedDate: formatDate(record.completed_date),
+      decisionNo: preparePdfText(record.decision_no),
+    });
+  }
+
+  return values;
+}
+
+function compactParts(parts: (string | null | undefined)[]) {
+  return parts.map(preparePdfText).filter(Boolean).join(" - ");
+}
+
+function getLineSectionValues(profile: DevoteeProfileBundle) {
+  const roles = profile.roles.map((role) =>
+    compactParts([
+      role.role_title,
+      role.organization,
+      compactParts([role.start_date, role.end_date]),
+      role.note,
+    ]),
+  );
+  const achievements = profile.notes.filter((note) => note.note_type === "achievement").map((note) => note.content);
+  const comments = profile.notes
+    .filter((note) => note.note_type === "comment" || note.note_type === "other")
+    .map((note) => note.content);
+
+  return { roles, achievements, comments };
+}
+
 function stampField(
   page: PDFPage,
   font: PDFFont,
@@ -78,6 +122,30 @@ function stampField(
     size: fontSize,
     font,
     color: rgb(0, 0, 0),
+  });
+}
+
+function stampLineSection(
+  pages: PDFPage[],
+  font: PDFFont,
+  section: MauGiaPhaLineSection,
+  values: string[],
+) {
+  const page = pages[section.pageIndex];
+  if (!page) return;
+
+  const fontSize = section.fontSize ?? DEFAULT_STAMP_FONT_SIZE;
+  values.slice(0, section.maxLines).forEach((value, index) => {
+    const prepared = preparePdfText(value);
+    if (!prepared) return;
+
+    page.drawText(fitSingleLineText(prepared, font, fontSize, section.maxWidth), {
+      x: section.x,
+      y: section.firstY - section.lineHeight * index,
+      size: fontSize,
+      font,
+      color: rgb(0, 0, 0),
+    });
   });
 }
 
@@ -121,7 +189,18 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
   try {
     const pdf = await PDFDocument.load(templateBytes);
     const stampValues = getStampValues(profile);
-    const font = await embedVietnameseFont(pdf, collectPdfStampText(Object.values(stampValues)));
+    const trainingStampValues = getTrainingStampValues(profile);
+    const lineSectionValues = getLineSectionValues(profile);
+    const font = await embedVietnameseFont(
+      pdf,
+      collectPdfStampText([
+        ...Object.values(stampValues),
+        ...[...trainingStampValues.values()].flatMap((value) => [value.completedDate, value.decisionNo]),
+        ...lineSectionValues.roles,
+        ...lineSectionValues.achievements,
+        ...lineSectionValues.comments,
+      ]),
+    );
     const pages = pdf.getPages();
 
     for (const [fieldKey, anchor] of Object.entries(MAU_GIA_PHA_STAMP_ANCHORS) as [
@@ -134,6 +213,23 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
 
       stampField(page, font, anchor, value);
     }
+
+    for (const [key, values] of trainingStampValues.entries()) {
+      const anchors = MAU_GIA_PHA_TRAINING_ANCHORS[key];
+      const completedDatePage = pages[anchors.completedDate.pageIndex];
+      const decisionNoPage = pages[anchors.decisionNo.pageIndex];
+
+      if (completedDatePage) {
+        stampField(completedDatePage, font, anchors.completedDate, values.completedDate);
+      }
+      if (decisionNoPage) {
+        stampField(decisionNoPage, font, anchors.decisionNo, values.decisionNo);
+      }
+    }
+
+    stampLineSection(pages, font, MAU_GIA_PHA_LINE_SECTIONS.roles, lineSectionValues.roles);
+    stampLineSection(pages, font, MAU_GIA_PHA_LINE_SECTIONS.achievements, lineSectionValues.achievements);
+    stampLineSection(pages, font, MAU_GIA_PHA_LINE_SECTIONS.comments, lineSectionValues.comments);
 
     return pdf.save({ useObjectStreams: false });
   } catch (error) {

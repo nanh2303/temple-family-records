@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { saveDevoteeProfileRelatedRecords, splitDevoteeProfilePayload } from "@/lib/data/devotee-afterlife";
 import {
   applyDevoteeCsvDuplicateChecks,
   getImportableRows,
@@ -63,18 +64,28 @@ async function insertInBatches(
   const inserted: { id: string; full_name: string }[] = [];
 
   for (let start = 0; start < rows.length; start += INSERT_BATCH_SIZE) {
-    const batch = rows.slice(start, start + INSERT_BATCH_SIZE);
-    const records = batch.flatMap((row) =>
-      row.parsedData ? [row.parsedData] : [],
-    );
-    if (records.length === 0) continue;
+    const batch = rows
+      .slice(start, start + INSERT_BATCH_SIZE)
+      .flatMap((row) => (row.parsedData ? [{ payload: splitDevoteeProfilePayload(row.parsedData) }] : []));
+
+    if (batch.length === 0) continue;
 
     const { data, error } = await supabase
       .from("devotees")
-      .insert(records)
+      .insert(batch.map((entry) => entry.payload.devotee))
       .select("id,full_name");
     if (error) throw new Error(error.message);
-    inserted.push(...(data ?? []));
+
+    const created = data ?? [];
+    for (let index = 0; index < batch.length; index += 1) {
+      const createdDevotee = created[index];
+      const { related } = batch[index].payload;
+      if (!createdDevotee) continue;
+
+      await saveDevoteeProfileRelatedRecords(supabase, createdDevotee.id, related);
+
+      inserted.push(createdDevotee);
+    }
   }
 
   return inserted;

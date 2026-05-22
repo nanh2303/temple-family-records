@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { DevoteeRecord } from "@/types/devotee";
+import type { DevoteeAfterlifeInfo, DevoteeRecord } from "@/types/devotee";
 
 type DevoteeProfileCardProps = {
   title: string;
@@ -28,23 +28,26 @@ export function ProfileField({ label, value }: FieldProps) {
   );
 }
 
-export function profileBasics(devotee: DevoteeRecord) {
+export function profileBasics(devotee: DevoteeRecord, afterlife?: DevoteeAfterlifeInfo | null) {
   return (
     <>
-      <ProfileField label="Số hồ sơ gia phả" value={devotee.family_registry_no} />
-      <ProfileField label="Số hồ sơ BHD" value={devotee.bhd_registry_no} />
-      <ProfileField label="Họ tên" value={devotee.full_name} />
-      <ProfileField label="Ngày sinh" value={devotee.birth_date} />
+      <ProfileField label="Số danh bộ gia đình" value={devotee.family_registry_no} />
+      <ProfileField label="Số danh bộ BHD" value={devotee.bhd_registry_no} />
+      <ProfileField label="Họ và tên" value={devotee.full_name} />
+      <ProfileField label="Ngày tháng năm sinh" value={devotee.birth_date} />
       <ProfileField label="Nơi sinh" value={devotee.birth_place} />
       <ProfileField label="Pháp danh" value={devotee.dharma_name} />
       <ProfileField label="Địa chỉ" value={devotee.address} />
       <ProfileField label="Quê quán" value={devotee.hometown} />
-      <ProfileField label="Ngày vào đơn vị" value={devotee.joined_unit_date} />
-      <ProfileField label="Ngày phát nguyện" value={devotee.vow_date} />
-      <ProfileField label="Ngày quy y" value={devotee.refuge_date} />
-      <ProfileField label="Đạo hữu/Thầy quy y" value={devotee.preceptor} />
-      <ProfileField label="Cha" value={devotee.father_name} />
-      <ProfileField label="Mẹ" value={devotee.mother_name} />
+      <ProfileField label="Ngày vào Đơn vị" value={devotee.joined_unit_date} />
+      <ProfileField label="Ngày Phát nguyện" value={devotee.vow_date} />
+      <ProfileField label="Ngày Quy y" value={devotee.refuge_date} />
+      <ProfileField label="Bổn Sư truyền giới" value={devotee.preceptor} />
+      <ProfileField label="Tên Cha" value={devotee.father_name} />
+      <ProfileField label="Tên Mẹ" value={devotee.mother_name} />
+      <ProfileField label="Tạ thế ngày" value={afterlife?.death_date} />
+      <ProfileField label="Mộ chí tại" value={afterlife?.grave_location} />
+      {afterlife?.note ? <ProfileField label="Ghi chú (hậu thế)" value={afterlife.note} /> : null}
     </>
   );
 }

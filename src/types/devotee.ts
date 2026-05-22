@@ -39,6 +39,7 @@ export type DevoteeRecord = {
 export type DevoteeTrainingRecord = {
   id: string;
   devotee_id: string;
+  record_key: string | null;
   category: string;
   title: string;
   completed_date: string | null;

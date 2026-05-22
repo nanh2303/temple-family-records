@@ -31,7 +31,7 @@ Open [http://localhost:3000](http://localhost:3000), sign in with an invited Sup
 
 ### Devotee management
 
-Authenticated app users can manage the main devotee record:
+Authenticated app users can manage the main devotee record plus Gia Phả detail sections: fixed training/camp/ordination rows, roles, achievements, comments, and afterlife information.
 
 - `GET /devotees` - search devotees.
 - `GET /devotees/new` - create a devotee.

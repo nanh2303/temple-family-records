@@ -19,8 +19,9 @@ export type Database = {
       };
       devotee_training_records: {
         Row: DevoteeTrainingRecord;
-        Insert: Omit<DevoteeTrainingRecord, "id" | "created_at"> & {
+        Insert: Omit<DevoteeTrainingRecord, "id" | "created_at" | "record_key"> & {
           id?: string;
+          record_key?: string | null;
         };
         Update: Partial<DevoteeTrainingRecord>;
       };

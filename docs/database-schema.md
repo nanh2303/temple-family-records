@@ -23,12 +23,14 @@ Primary registry row for a devotee or family member.
 
 ## Related tables
 
-1. **`public.devotee_training_records`** — Long-term study, camps, ordination levels, etc. Distinguish rows with `category` (e.g. `long_term`, `camp`, `ordination_level` — conventions are application-level until enums are added).
+1. **`public.devotee_training_records`** — Long-term study, camps, ordination levels, etc. Distinguish rows with `category` (e.g. `long_term`, `camp`, `ordination_level`). Fixed rows that map to the official PDF use `record_key`; older/free-form rows may leave it `NULL`.
 2. **`public.devotee_roles`** — Past organizational roles with optional date range.
 3. **`public.devotee_notes`** — Free-form notes with `note_type` in `achievement`, `comment`, `other`.
 4. **`public.devotee_afterlife_info`** — Optional 1:1 extension for death date, grave location, and notes.
 
 All child tables reference `devotees(id)` with `ON DELETE CASCADE`.
+
+`0004_training_record_keys.sql` adds `devotee_training_records.record_key` plus a partial unique index on `(devotee_id, record_key)` for fixed Gia Phả fields.
 
 ## Row Level Security
 

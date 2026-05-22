@@ -1,6 +1,6 @@
 "use client";
 
-import { Save, X } from "lucide-react";
+import { Plus, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,8 +10,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { devoteeCreateSchema, devoteeUpdateSchema } from "@/lib/validations/devotee";
-import type { DevoteeRecord } from "@/types/devotee";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  DEVOTEE_TRAINING_CATEGORIES,
+  DEVOTEE_TRAINING_RECORD_DEFINITIONS,
+  getTrainingRecordDefinitionForRecord,
+  type DevoteeTrainingCategory,
+  type DevoteeTrainingRecordKey,
+} from "@/lib/devotees/profile-sections";
+import {
+  devoteeProfileCreateSchema,
+  devoteeProfileUpdateSchema,
+  type DevoteeNoteFormRecordInput,
+  type DevoteeRoleFormRecordInput,
+  type DevoteeTrainingFormRecordInput,
+} from "@/lib/validations/devotee";
+import type {
+  DevoteeAfterlifeInfo,
+  DevoteeNote,
+  DevoteeRecord,
+  DevoteeRole,
+  DevoteeTrainingRecord,
+} from "@/types/devotee";
 
 const DEVOTEE_FORM_FIELD_NAMES = [
   "family_registry_no",
@@ -28,12 +48,46 @@ const DEVOTEE_FORM_FIELD_NAMES = [
   "preceptor",
   "father_name",
   "mother_name",
+  "death_date",
+  "grave_location",
+  "afterlife_note",
 ] as const;
+
+const NOTE_SECTIONS = [
+  { note_type: "achievement", title: "Thành tích cá nhân", addLabel: "Thêm thành tích" },
+  { note_type: "comment", title: "Các nhận xét khác", addLabel: "Thêm nhận xét" },
+  { note_type: "other", title: "Ghi chú khác", addLabel: "Thêm ghi chú" },
+] as const;
+
+const TRAINING_CATEGORY_ORDER: DevoteeTrainingCategory[] = ["long_term", "camp", "ordination_level"];
 
 type DevoteeFormFieldName = (typeof DEVOTEE_FORM_FIELD_NAMES)[number];
 type DevoteeFormValues = Record<DevoteeFormFieldName, string>;
 type DevoteeFormErrors = Partial<Record<DevoteeFormFieldName, string>>;
-type DevoteeFormInitialValues = Partial<Pick<DevoteeRecord, DevoteeFormFieldName>>;
+type DevoteeCoreFormFieldName = Exclude<
+  DevoteeFormFieldName,
+  "death_date" | "grave_location" | "afterlife_note"
+>;
+type DevoteeTrainingFormValues = Record<DevoteeTrainingRecordKey, { completed_date: string; decision_no: string }>;
+type DevoteeRoleFormValues = {
+  role_title: string;
+  organization: string;
+  start_date: string;
+  end_date: string;
+  note: string;
+};
+type DevoteeNoteType = (typeof NOTE_SECTIONS)[number]["note_type"];
+type DevoteeNoteFormValues = Record<DevoteeNoteType, { content: string }[]>;
+type TrainingDefinition = (typeof DEVOTEE_TRAINING_RECORD_DEFINITIONS)[number];
+
+type DevoteeFormInitialValues = Partial<Pick<DevoteeRecord, DevoteeCoreFormFieldName>> & {
+  death_date?: DevoteeAfterlifeInfo["death_date"];
+  grave_location?: DevoteeAfterlifeInfo["grave_location"];
+  afterlife_note?: DevoteeAfterlifeInfo["note"];
+  training?: DevoteeTrainingRecord[];
+  roles?: DevoteeRole[];
+  notes?: DevoteeNote[];
+};
 
 type DevoteeFormProps =
   | {
@@ -90,13 +144,62 @@ const FORM_SECTIONS: { title: string; description?: string; fields: FieldConfig[
       { name: "mother_name", label: "Tên Mẹ" },
     ],
   },
+  {
+    title: "Hậu thế",
+    description: "Mục I trên mẫu Gia Phả.",
+    fields: [
+      { name: "death_date", label: "Tạ thế ngày", type: "date" },
+      { name: "grave_location", label: "Mộ chí tại" },
+      { name: "afterlife_note", label: "Ghi chú" },
+    ],
+  },
 ];
 
 function buildInitialValues(initialValues?: DevoteeFormInitialValues): DevoteeFormValues {
   return DEVOTEE_FORM_FIELD_NAMES.reduce((values, fieldName) => {
-    values[fieldName] = initialValues?.[fieldName] ?? "";
+    if (fieldName === "afterlife_note") {
+      values[fieldName] = initialValues?.afterlife_note ?? "";
+      return values;
+    }
+    values[fieldName] = (initialValues?.[fieldName as keyof DevoteeFormInitialValues] as string | null | undefined) ?? "";
     return values;
   }, {} as DevoteeFormValues);
+}
+
+function buildInitialTrainingValues(initialValues?: DevoteeFormInitialValues): DevoteeTrainingFormValues {
+  const values = DEVOTEE_TRAINING_RECORD_DEFINITIONS.reduce((current, definition) => {
+    current[definition.key] = { completed_date: "", decision_no: "" };
+    return current;
+  }, {} as DevoteeTrainingFormValues);
+
+  for (const record of initialValues?.training ?? []) {
+    const definition = getTrainingRecordDefinitionForRecord(record);
+    if (!definition) continue;
+    values[definition.key] = {
+      completed_date: record.completed_date ?? "",
+      decision_no: record.decision_no ?? "",
+    };
+  }
+
+  return values;
+}
+
+function buildInitialRoles(initialValues?: DevoteeFormInitialValues): DevoteeRoleFormValues[] {
+  return (initialValues?.roles ?? []).map((role) => ({
+    role_title: role.role_title,
+    organization: role.organization ?? "",
+    start_date: role.start_date ?? "",
+    end_date: role.end_date ?? "",
+    note: role.note ?? "",
+  }));
+}
+
+function buildInitialNotes(initialValues?: DevoteeFormInitialValues): DevoteeNoteFormValues {
+  const values: DevoteeNoteFormValues = { achievement: [], comment: [], other: [] };
+  for (const note of initialValues?.notes ?? []) {
+    values[note.note_type].push({ content: note.content });
+  }
+  return values;
 }
 
 function mapIssuesToErrors(issues: ZodIssue[]) {
@@ -115,9 +218,59 @@ function mapIssuesToErrors(issues: ZodIssue[]) {
   return { fieldErrors, formError: formErrors.join(" ") || null };
 }
 
+function hasRoleContent(role: DevoteeRoleFormValues) {
+  return Boolean(role.role_title || role.organization || role.start_date || role.end_date || role.note);
+}
+
+function buildTrainingPayload(values: DevoteeTrainingFormValues): DevoteeTrainingFormRecordInput[] {
+  return DEVOTEE_TRAINING_RECORD_DEFINITIONS.flatMap((definition) => {
+    const record = values[definition.key];
+    if (!record.completed_date && !record.decision_no) return [];
+    return [
+      {
+        key: definition.key,
+        completed_date: record.completed_date,
+        decision_no: record.decision_no,
+      },
+    ];
+  });
+}
+
+function buildRolesPayload(roles: DevoteeRoleFormValues[]): DevoteeRoleFormRecordInput[] {
+  return roles.filter(hasRoleContent).map((role) => ({
+    role_title: role.role_title,
+    organization: role.organization,
+    start_date: role.start_date,
+    end_date: role.end_date,
+    note: role.note,
+  }));
+}
+
+function buildNotesPayload(notes: DevoteeNoteFormValues): DevoteeNoteFormRecordInput[] {
+  return NOTE_SECTIONS.flatMap((section) =>
+    notes[section.note_type]
+      .filter((note) => note.content.trim().length > 0)
+      .map((note) => ({ note_type: section.note_type, content: note.content })),
+  );
+}
+
+function groupTrainingDefinitions(category: DevoteeTrainingCategory) {
+  const groups = new Map<string, TrainingDefinition[]>();
+  for (const definition of DEVOTEE_TRAINING_RECORD_DEFINITIONS.filter((item) => item.category === category)) {
+    const current = groups.get(definition.group) ?? [];
+    groups.set(definition.group, [...current, definition]);
+  }
+  return [...groups.entries()];
+}
+
 export function DevoteeForm(props: DevoteeFormProps) {
   const router = useRouter();
   const [values, setValues] = useState<DevoteeFormValues>(() => buildInitialValues(props.initialValues));
+  const [trainingValues, setTrainingValues] = useState<DevoteeTrainingFormValues>(() =>
+    buildInitialTrainingValues(props.initialValues),
+  );
+  const [roles, setRoles] = useState<DevoteeRoleFormValues[]>(() => buildInitialRoles(props.initialValues));
+  const [notes, setNotes] = useState<DevoteeNoteFormValues>(() => buildInitialNotes(props.initialValues));
   const [errors, setErrors] = useState<DevoteeFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -129,14 +282,39 @@ export function DevoteeForm(props: DevoteeFormProps) {
     setErrors((current) => ({ ...current, [fieldName]: undefined }));
   }
 
+  function updateTrainingField(
+    key: DevoteeTrainingRecordKey,
+    field: keyof DevoteeTrainingFormValues[DevoteeTrainingRecordKey],
+    value: string,
+  ) {
+    setTrainingValues((current) => ({ ...current, [key]: { ...current[key], [field]: value } }));
+  }
+
+  function updateRole(index: number, field: keyof DevoteeRoleFormValues, value: string) {
+    setRoles((current) => current.map((role, roleIndex) => (roleIndex === index ? { ...role, [field]: value } : role)));
+  }
+
+  function updateNote(noteType: DevoteeNoteType, index: number, value: string) {
+    setNotes((current) => ({
+      ...current,
+      [noteType]: current[noteType].map((note, noteIndex) => (noteIndex === index ? { content: value } : note)),
+    }));
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setErrors({});
     setMessage(null);
 
-    const schema = props.mode === "create" ? devoteeCreateSchema : devoteeUpdateSchema;
-    const parsed = schema.safeParse(values);
+    const payload = {
+      ...values,
+      training_records: buildTrainingPayload(trainingValues),
+      roles: buildRolesPayload(roles),
+      notes: buildNotesPayload(notes),
+    };
+    const schema = props.mode === "create" ? devoteeProfileCreateSchema : devoteeProfileUpdateSchema;
+    const parsed = schema.safeParse(payload);
 
     if (!parsed.success) {
       const { fieldErrors, formError } = mapIssuesToErrors(parsed.error.issues);
@@ -196,7 +374,14 @@ export function DevoteeForm(props: DevoteeFormProps) {
               const inputId = `devotee-${field.name}`;
 
               return (
-                <div key={field.name} className={field.name === "address" ? "space-y-2 sm:col-span-2" : "space-y-2"}>
+                <div
+                  key={field.name}
+                  className={
+                    field.name === "address" || field.name === "grave_location" || field.name === "afterlife_note"
+                      ? "space-y-2 sm:col-span-2"
+                      : "space-y-2"
+                  }
+                >
                   <Label htmlFor={inputId}>{field.label}</Label>
                   <Input
                     id={inputId}
@@ -219,6 +404,188 @@ export function DevoteeForm(props: DevoteeFormProps) {
           </CardContent>
         </Card>
       ))}
+
+      {TRAINING_CATEGORY_ORDER.map((category) => (
+        <Card key={category}>
+          <CardHeader>
+            <CardTitle>{DEVOTEE_TRAINING_CATEGORIES[category]}</CardTitle>
+            <CardDescription>Nhập ngày hoàn thành và số quyết định tương ứng trên mẫu Gia Phả.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {groupTrainingDefinitions(category).map(([group, definitions]) => (
+              <div key={group} className="space-y-3">
+                <h4 className="text-sm font-semibold text-zinc-900">{group}</h4>
+                <div className="space-y-3">
+                  {definitions.map((definition) => {
+                    const dateInputId = `training-${definition.key}-date`;
+                    const decisionInputId = `training-${definition.key}-decision`;
+                    return (
+                      <div
+                        key={definition.key}
+                        className="grid gap-3 rounded-md border border-zinc-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,12rem)_minmax(0,1fr)]"
+                      >
+                        <div className="flex items-center text-sm font-medium text-zinc-900">{definition.label}</div>
+                        <div className="space-y-2">
+                          <Label htmlFor={dateInputId}>Ngày</Label>
+                          <Input
+                            id={dateInputId}
+                            type="date"
+                            value={trainingValues[definition.key].completed_date}
+                            onChange={(event) => updateTrainingField(definition.key, "completed_date", event.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={decisionInputId}>Quyết định số</Label>
+                          <Input
+                            id={decisionInputId}
+                            value={trainingValues[definition.key].decision_no}
+                            onChange={(event) => updateTrainingField(definition.key, "decision_no", event.target.value)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Các chức vụ từng đảm nhận</CardTitle>
+          <CardDescription>Các dòng này được in vào mục E trên mẫu Gia Phả.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {roles.length === 0 ? <p className="text-sm text-zinc-500">Chưa có chức vụ nào.</p> : null}
+          {roles.map((role, index) => (
+            <div key={index} className="grid gap-3 rounded-md border border-zinc-200 p-3 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor={`role-${index}-title`}>Chức vụ</Label>
+                <Input
+                  id={`role-${index}-title`}
+                  value={role.role_title}
+                  onChange={(event) => updateRole(index, "role_title", event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`role-${index}-organization`}>Đơn vị / tổ chức</Label>
+                <Input
+                  id={`role-${index}-organization`}
+                  value={role.organization}
+                  onChange={(event) => updateRole(index, "organization", event.target.value)}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`role-${index}-start`}>Từ ngày</Label>
+                  <Input
+                    id={`role-${index}-start`}
+                    type="date"
+                    value={role.start_date}
+                    onChange={(event) => updateRole(index, "start_date", event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`role-${index}-end`}>Đến ngày</Label>
+                  <Input
+                    id={`role-${index}-end`}
+                    type="date"
+                    value={role.end_date}
+                    onChange={(event) => updateRole(index, "end_date", event.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor={`role-${index}-note`}>Ghi chú</Label>
+                <Input
+                  id={`role-${index}-note`}
+                  value={role.note}
+                  onChange={(event) => updateRole(index, "note", event.target.value)}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRoles((current) => current.filter((_, roleIndex) => roleIndex !== index))}
+                >
+                  <Trash2 aria-hidden />
+                  Xóa chức vụ
+                </Button>
+              </div>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              setRoles((current) => [
+                ...current,
+                { role_title: "", organization: "", start_date: "", end_date: "", note: "" },
+              ])
+            }
+          >
+            <Plus aria-hidden />
+            Thêm chức vụ
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Thành tích và nhận xét</CardTitle>
+          <CardDescription>Các dòng này được in vào mục G và H trên mẫu Gia Phả.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {NOTE_SECTIONS.map((section) => (
+            <div key={section.note_type} className="space-y-3">
+              <h4 className="text-sm font-semibold text-zinc-900">{section.title}</h4>
+              {notes[section.note_type].length === 0 ? <p className="text-sm text-zinc-500">Chưa có dữ liệu.</p> : null}
+              {notes[section.note_type].map((note, index) => (
+                <div key={index} className="space-y-2 rounded-md border border-zinc-200 p-3">
+                  <Label htmlFor={`note-${section.note_type}-${index}`}>Nội dung</Label>
+                  <Textarea
+                    id={`note-${section.note_type}-${index}`}
+                    value={note.content}
+                    onChange={(event) => updateNote(section.note_type, index, event.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setNotes((current) => ({
+                        ...current,
+                        [section.note_type]: current[section.note_type].filter((_, noteIndex) => noteIndex !== index),
+                      }))
+                    }
+                  >
+                    <Trash2 aria-hidden />
+                    Xóa dòng
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  setNotes((current) => ({
+                    ...current,
+                    [section.note_type]: [...current[section.note_type], { content: "" }],
+                  }))
+                }
+              >
+                <Plus aria-hidden />
+                {section.addLabel}
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button asChild type="button" variant="outline">
