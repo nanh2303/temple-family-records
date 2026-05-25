@@ -1,9 +1,11 @@
 "use client";
 
-import { Plus, Save, Trash2, X, Upload, Loader2 } from "lucide-react";
+// File: src/components/devotees/DevoteeForm.tsx
+
+import { Plus, Save, Trash2, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ZodIssue } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ import {
   type DevoteeTrainingCategory,
   type DevoteeTrainingRecordKey,
 } from "@/lib/devotees/profile-sections";
+import { createLocalPreviewUrl, resizeImageFile } from "@/lib/image/resizeImage";
 import {
   devoteeProfileCreateSchema,
   devoteeProfileUpdateSchema,
@@ -32,6 +35,10 @@ import type {
   DevoteeRole,
   DevoteeTrainingRecord,
 } from "@/types/devotee";
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const DEVOTEE_FORM_FIELD_NAMES = [
   "family_registry_no",
@@ -61,6 +68,10 @@ const NOTE_SECTIONS = [
 ] as const;
 
 const TRAINING_CATEGORY_ORDER: DevoteeTrainingCategory[] = ["long_term", "camp", "ordination_level"];
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type DevoteeFormFieldName = (typeof DEVOTEE_FORM_FIELD_NAMES)[number];
 type DevoteeFormValues = Record<DevoteeFormFieldName, string>;
@@ -110,6 +121,10 @@ type FieldConfig = {
   type?: "date" | "text";
   required?: boolean;
 };
+
+// ---------------------------------------------------------------------------
+// Form-section layout config (avatar section has no fields — rendered separately)
+// ---------------------------------------------------------------------------
 
 const FORM_SECTIONS: { title: string; description?: string; fields: FieldConfig[] }[] = [
   {
@@ -161,6 +176,10 @@ const FORM_SECTIONS: { title: string; description?: string; fields: FieldConfig[
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function buildInitialValues(initialValues?: DevoteeFormInitialValues): DevoteeFormValues {
   return DEVOTEE_FORM_FIELD_NAMES.reduce((values, fieldName) => {
     if (fieldName === "afterlife_note") {
@@ -171,7 +190,8 @@ function buildInitialValues(initialValues?: DevoteeFormInitialValues): DevoteeFo
       values[fieldName] = initialValues?.profile_picture_url ?? "";
       return values;
     }
-    values[fieldName] = (initialValues?.[fieldName as keyof DevoteeFormInitialValues] as string | null | undefined) ?? "";
+    values[fieldName] =
+      (initialValues?.[fieldName as keyof DevoteeFormInitialValues] as string | null | undefined) ?? "";
     return values;
   }, {} as DevoteeFormValues);
 }
@@ -236,13 +256,7 @@ function buildTrainingPayload(values: DevoteeTrainingFormValues): DevoteeTrainin
   return DEVOTEE_TRAINING_RECORD_DEFINITIONS.flatMap((definition) => {
     const record = values[definition.key];
     if (!record.completed_date && !record.decision_no) return [];
-    return [
-      {
-        key: definition.key,
-        completed_date: record.completed_date,
-        decision_no: record.decision_no,
-      },
-    ];
+    return [{ key: definition.key, completed_date: record.completed_date, decision_no: record.decision_no }];
   });
 }
 
@@ -273,8 +287,45 @@ function groupTrainingDefinitions(category: DevoteeTrainingCategory) {
   return [...groups.entries()];
 }
 
+/**
+ * Upload a (possibly resized) File to the upload-picture endpoint.
+ * Returns the public URL on success, throws on failure.
+ */
+async function uploadPictureFile(devoteeId: string, file: File): Promise<string> {
+  let fileToUpload: File;
+  try {
+    fileToUpload = await resizeImageFile(file);
+  } catch {
+    // If resize fails (e.g. unsupported environment), fall back to original.
+    fileToUpload = file;
+  }
+
+  const formData = new FormData();
+  formData.append("file", fileToUpload);
+
+  const response = await fetch(`/api/devotees/${devoteeId}/upload-picture`, {
+    method: "POST",
+    credentials: "same-origin",
+    body: formData,
+  });
+
+  const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+  if (!response.ok) {
+    throw new Error(data?.error ?? `Upload failed (${response.status})`);
+  }
+  if (!data?.url) {
+    throw new Error("No URL returned from upload");
+  }
+  return data.url;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function DevoteeForm(props: DevoteeFormProps) {
   const router = useRouter();
+
   const [values, setValues] = useState<DevoteeFormValues>(() => buildInitialValues(props.initialValues));
   const [trainingValues, setTrainingValues] = useState<DevoteeTrainingFormValues>(() =>
     buildInitialTrainingValues(props.initialValues),
@@ -284,13 +335,32 @@ export function DevoteeForm(props: DevoteeFormProps) {
   const [errors, setErrors] = useState<DevoteeFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Avatar-specific state
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [uploadPictureError, setUploadPictureError] = useState<string | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
     props.initialValues?.profile_picture_url || null,
   );
+  // In create mode we hold the pending File until the devotee ID is known.
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  // Ref for revoking the local object-URL when it is replaced or the component unmounts.
+  const localPreviewUrlRef = useRef<string | null>(null);
 
   const cancelHref = props.cancelHref ?? (props.mode === "edit" ? `/devotees/${props.devoteeId}` : "/devotees");
+
+  // Revoke any pending object-URL on unmount.
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrlRef.current) {
+        URL.revokeObjectURL(localPreviewUrlRef.current);
+      }
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Field helpers
+  // ---------------------------------------------------------------------------
 
   function updateField(fieldName: DevoteeFormFieldName, value: string) {
     setValues((current) => ({ ...current, [fieldName]: value }));
@@ -306,7 +376,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
   }
 
   function updateRole(index: number, field: keyof DevoteeRoleFormValues, value: string) {
-    setRoles((current) => current.map((role, roleIndex) => (roleIndex === index ? { ...role, [field]: value } : role)));
+    setRoles((current) =>
+      current.map((role, roleIndex) => (roleIndex === index ? { ...role, [field]: value } : role)),
+    );
   }
 
   function updateNote(noteType: DevoteeNoteType, index: number, value: string) {
@@ -316,57 +388,65 @@ export function DevoteeForm(props: DevoteeFormProps) {
     }));
   }
 
-  async function handleProfilePictureUpload(event: React.ChangeEvent<HTMLInputElement>) {
+  // ---------------------------------------------------------------------------
+  // Avatar handlers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Shared file-selection handler.
+   *  - edit mode  → resize + upload immediately.
+   *  - create mode → resize, set local preview, store file for post-create upload.
+   */
+  async function handleProfilePictureSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (props.mode !== "edit") {
-      setUploadPictureError("You can only upload a profile picture when editing an existing devotee record.");
+    setUploadPictureError(null);
+
+    if (props.mode === "create") {
+      // Build a local preview and queue the file for upload after save.
+      if (localPreviewUrlRef.current) {
+        URL.revokeObjectURL(localPreviewUrlRef.current);
+      }
+      const previewUrl = createLocalPreviewUrl(file);
+      localPreviewUrlRef.current = previewUrl;
+      setProfilePicturePreview(previewUrl);
+      setPendingAvatarFile(file);
+      // Reset the input so the same file can be re-selected if the user changes their mind.
+      event.target.value = "";
       return;
     }
 
+    // edit mode — upload right away.
     setUploadingPicture(true);
-    setUploadPictureError(null);
-
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch(`/api/devotees/${props.devoteeId}/upload-picture`, {
-        method: "POST",
-        credentials: "same-origin",
-        body: formData,
-      });
-
-      const data = (await response.json().catch(() => null)) as
-        | { url?: string; error?: string }
-        | null;
-
-      if (!response.ok) {
-        throw new Error(data?.error ?? `Upload failed (${response.status})`);
-      }
-
-      if (!data?.url) {
-        throw new Error("No URL returned from upload");
-      }
-
-      setValues((current) => ({ ...current, profile_picture_url: data.url || ""}));
-      setProfilePicturePreview(data.url);
+      const url = await uploadPictureFile(props.devoteeId, file);
+      setValues((current) => ({ ...current, profile_picture_url: url }));
+      setProfilePicturePreview(url);
     } catch (error) {
       setUploadPictureError(error instanceof Error ? error.message : "Failed to upload profile picture");
     } finally {
       setUploadingPicture(false);
-      // Reset input
       event.target.value = "";
     }
   }
 
   async function handleRemoveProfilePicture() {
-    if (props.mode !== "edit") return;
-
-    setUploadingPicture(true);
     setUploadPictureError(null);
 
+    if (props.mode === "create") {
+      // Just clear the pending file and local preview.
+      if (localPreviewUrlRef.current) {
+        URL.revokeObjectURL(localPreviewUrlRef.current);
+        localPreviewUrlRef.current = null;
+      }
+      setPendingAvatarFile(null);
+      setProfilePicturePreview(null);
+      return;
+    }
+
+    // edit mode — delete from server.
+    setUploadingPicture(true);
     try {
       const response = await fetch(`/api/devotees/${props.devoteeId}/upload-picture`, {
         method: "DELETE",
@@ -386,6 +466,10 @@ export function DevoteeForm(props: DevoteeFormProps) {
       setUploadingPicture(false);
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -420,7 +504,11 @@ export function DevoteeForm(props: DevoteeFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
-      const body = (await response.json().catch(() => null)) as { error?: string; id?: string; devotee?: { id: string } } | null;
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+        id?: string;
+        devotee?: { id: string };
+      } | null;
 
       if (!response.ok) {
         throw new Error(body?.error ?? `Request failed (${response.status})`);
@@ -429,6 +517,19 @@ export function DevoteeForm(props: DevoteeFormProps) {
       const nextId = props.mode === "create" ? body?.id : props.devoteeId;
       if (!nextId) {
         throw new Error("Không xác định được hồ sơ vừa lưu.");
+      }
+
+      // If we are in create mode and the user pre-selected an avatar, upload it now.
+      if (props.mode === "create" && pendingAvatarFile) {
+        setUploadingPicture(true);
+        try {
+          await uploadPictureFile(nextId, pendingAvatarFile);
+        } catch (uploadErr) {
+          // Non-fatal: the devotee record was saved. Report the upload failure but still navigate.
+          console.error("Post-create avatar upload failed:", uploadErr);
+        } finally {
+          setUploadingPicture(false);
+        }
       }
 
       router.push(`/devotees/${nextId}`);
@@ -440,6 +541,85 @@ export function DevoteeForm(props: DevoteeFormProps) {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Render helpers
+  // ---------------------------------------------------------------------------
+
+  function renderAvatarSection() {
+    const isCreateMode = props.mode === "create";
+
+    return (
+      <Card key="Ảnh đại diện">
+        <CardHeader>
+          <CardTitle>Ảnh đại diện</CardTitle>
+          {isCreateMode ? (
+            <CardDescription>
+              Chọn ảnh ngay bây giờ — ảnh sẽ được tải lên tự động sau khi lưu hồ sơ.
+            </CardDescription>
+          ) : null}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {uploadPictureError ? (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {uploadPictureError}
+            </p>
+          ) : null}
+
+          {profilePicturePreview ? (
+            <div className="space-y-2">
+              <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={profilePicturePreview}
+                  alt="Ảnh đại diện xem trước"
+                  className="h-32 w-32 rounded-lg object-cover shadow-sm"
+                />
+                {isCreateMode ? (
+                  <span className="absolute -bottom-2 left-0 right-0 text-center text-[10px] text-zinc-500">
+                    Xem trước — sẽ được tải lên khi lưu
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="profile-picture-input">
+              {profilePicturePreview ? "Thay đổi ảnh đại diện" : "Tải lên ảnh đại diện"}
+            </Label>
+            <Input
+              id="profile-picture-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={uploadingPicture}
+              onChange={handleProfilePictureSelect}
+            />
+            <p className="text-xs text-zinc-500">
+              Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB. Ảnh sẽ được tự động thu nhỏ về 800×800 px trước khi lưu.
+            </p>
+          </div>
+
+          {profilePicturePreview ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={uploadingPicture}
+              onClick={handleRemoveProfilePicture}
+            >
+              {uploadingPicture ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+              {isCreateMode ? "Huỷ chọn ảnh" : "Xóa ảnh đại diện"}
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
     <form className="space-y-6" onSubmit={onSubmit}>
       {message ? (
@@ -449,61 +629,8 @@ export function DevoteeForm(props: DevoteeFormProps) {
       ) : null}
 
       {FORM_SECTIONS.map((section) => {
-        // Special handling for profile picture section
         if (section.title === "Ảnh đại diện") {
-          return (
-            <Card key={section.title}>
-              <CardHeader>
-                <CardTitle>{section.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {uploadPictureError ? (
-                  <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {uploadPictureError}
-                  </p>
-                ) : null}
-                {profilePicturePreview ? (
-                  <div className="space-y-2">
-                    <div className="relative inline-block">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={profilePicturePreview}
-                        alt="Profile"
-                        className="h-32 w-32 rounded-lg object-cover"
-                      />
-                    </div>
-                  </div>
-                ) : null}
-                <div className="space-y-2">
-                  <Label htmlFor="profile-picture-input">
-                    {profilePicturePreview ? "Thay đổi ảnh đại diện" : "Tải lên ảnh đại diện"}
-                  </Label>
-                  <Input
-                    id="profile-picture-input"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    disabled={uploadingPicture || props.mode === "create"}
-                    onChange={handleProfilePictureUpload}
-                  />
-                  <p className="text-xs text-zinc-500">
-                    Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB. {props.mode === "create" ? "Vui lòng lưu hồ sơ trước khi tải ảnh." : ""}
-                  </p>
-                </div>
-                {profilePicturePreview ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingPicture}
-                    onClick={handleRemoveProfilePicture}
-                  >
-                    {uploadingPicture ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
-                    Xóa ảnh đại diện
-                  </Button>
-                ) : null}
-              </CardContent>
-            </Card>
-          );
+          return renderAvatarSection();
         }
 
         return (
@@ -576,7 +703,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
                             id={dateInputId}
                             type="date"
                             value={trainingValues[definition.key].completed_date}
-                            onChange={(event) => updateTrainingField(definition.key, "completed_date", event.target.value)}
+                            onChange={(event) =>
+                              updateTrainingField(definition.key, "completed_date", event.target.value)
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -584,7 +713,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
                           <Input
                             id={decisionInputId}
                             value={trainingValues[definition.key].decision_no}
-                            onChange={(event) => updateTrainingField(definition.key, "decision_no", event.target.value)}
+                            onChange={(event) =>
+                              updateTrainingField(definition.key, "decision_no", event.target.value)
+                            }
                           />
                         </div>
                       </div>
@@ -688,7 +819,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
           {NOTE_SECTIONS.map((section) => (
             <div key={section.note_type} className="space-y-3">
               <h4 className="text-sm font-semibold text-zinc-900">{section.title}</h4>
-              {notes[section.note_type].length === 0 ? <p className="text-sm text-zinc-500">Chưa có dữ liệu.</p> : null}
+              {notes[section.note_type].length === 0 ? (
+                <p className="text-sm text-zinc-500">Chưa có dữ liệu.</p>
+              ) : null}
               {notes[section.note_type].map((note, index) => (
                 <div key={index} className="space-y-2 rounded-md border border-zinc-200 p-3">
                   <Label htmlFor={`note-${section.note_type}-${index}`}>Nội dung</Label>
@@ -704,7 +837,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
                     onClick={() =>
                       setNotes((current) => ({
                         ...current,
-                        [section.note_type]: current[section.note_type].filter((_, noteIndex) => noteIndex !== index),
+                        [section.note_type]: current[section.note_type].filter(
+                          (_, noteIndex) => noteIndex !== index,
+                        ),
                       }))
                     }
                   >
@@ -732,14 +867,20 @@ export function DevoteeForm(props: DevoteeFormProps) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {uploadingPicture ? (
+          <span className="flex items-center gap-1.5 text-sm text-zinc-500">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Đang tải ảnh…
+          </span>
+        ) : null}
         <Button asChild type="button" variant="outline">
           <Link href={cancelHref}>
             <X aria-hidden />
             Hủy
           </Link>
         </Button>
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || uploadingPicture}>
           <Save aria-hidden />
           {loading ? "Đang lưu..." : "Lưu"}
         </Button>

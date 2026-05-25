@@ -1,11 +1,30 @@
+// File: src/app/api/devotees/[id]/upload-picture/route.ts
+
 import { NextResponse } from "next/server";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { devoteeUuidSchema } from "@/lib/validations/devotee";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const STORAGE_BUCKET = "devotee-profiles";
+
+function isAllowedMimeType(mimeType: string): boolean {
+  return mimeType === "image/jpeg" || mimeType === "image/png" || mimeType === "image/webp";
+}
+
+function extractFilePath(publicUrl: string): string | null {
+  try {
+    const url = new URL(publicUrl);
+    const pathParts = url.pathname.split("/");
+    const bucketIndex = pathParts.indexOf(STORAGE_BUCKET);
+    if (bucketIndex !== -1 && bucketIndex + 1 < pathParts.length) {
+      return pathParts.slice(bucketIndex + 1).join("/");
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -33,7 +52,7 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    if (!isAllowedMimeType(file.type)) {
       return NextResponse.json(
         { error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." },
         { status: 400 },
@@ -47,7 +66,6 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    // Check if devotee exists
     const { data: existingDevotee, error: existingError } = await supabase
       .from("devotees")
       .select("id, profile_picture_url")
@@ -63,7 +81,6 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Devotee not found" }, { status: 404 });
     }
 
-    // Delete old profile picture if it exists
     if (existingDevotee.profile_picture_url) {
       const oldFilePath = extractFilePath(existingDevotee.profile_picture_url);
       if (oldFilePath) {
@@ -71,8 +88,7 @@ export async function POST(request: Request, context: RouteContext) {
       }
     }
 
-    // Upload new file
-    const fileExtension = file.name.split(".").pop() || "jpg";
+    const fileExtension = file.name.split(".").pop() ?? "jpg";
     const fileName = `${parsedId.data}-${Date.now()}.${fileExtension}`;
     const filePath = `${parsedId.data}/${fileName}`;
 
@@ -88,39 +104,32 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
-    // Get public URL
     const {
       data: { publicUrl },
     } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(uploadData.path);
 
-    // Update devotee record with new profile picture URL
     const { error: updateError } = await supabase
       .from("devotees")
       .update({ profile_picture_url: publicUrl })
       .eq("id", parsedId.data);
 
     if (updateError) {
-      // Clean up uploaded file if update fails
       await supabase.storage.from(STORAGE_BUCKET).remove([uploadData.path]);
-      
-      // Log detailed error for debugging
+
       console.error("RLS Policy Error Details:", {
         error: updateError.message,
         code: updateError.code,
         details: updateError.details,
         devoteeId: parsedId.data,
       });
-      
-      // Check if it's an RLS policy error
+
       if (updateError.message.includes("row-level security") || updateError.code === "PGRST100") {
         return NextResponse.json(
-          { 
-            error: "Database permission denied. Please ensure RLS policies are properly configured. Contact your administrator." 
-          }, 
-          { status: 403 }
+          { error: "Database permission denied. Please ensure RLS policies are properly configured." },
+          { status: 403 },
         );
       }
-      
+
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
@@ -150,7 +159,6 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   try {
-    // Get current profile picture
     const { data: devotee, error: selectError } = await supabase
       .from("devotees")
       .select("profile_picture_url")
@@ -165,13 +173,11 @@ export async function DELETE(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "No profile picture to delete" }, { status: 404 });
     }
 
-    // Delete from storage
     const filePath = extractFilePath(devotee.profile_picture_url);
     if (filePath) {
       await supabase.storage.from(STORAGE_BUCKET).remove([filePath]);
     }
 
-    // Update devotee record
     const { error: updateError } = await supabase
       .from("devotees")
       .update({ profile_picture_url: null })
@@ -184,16 +190,14 @@ export async function DELETE(request: Request, context: RouteContext) {
         details: updateError.details,
         devoteeId: parsedId.data,
       });
-      
+
       if (updateError.message.includes("row-level security") || updateError.code === "PGRST100") {
         return NextResponse.json(
-          { 
-            error: "Database permission denied. Please ensure RLS policies are properly configured. Contact your administrator." 
-          }, 
-          { status: 403 }
+          { error: "Database permission denied. Please ensure RLS policies are properly configured." },
+          { status: 403 },
         );
       }
-      
+
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
@@ -203,20 +207,5 @@ export async function DELETE(request: Request, context: RouteContext) {
       { error: error instanceof Error ? error.message : "Delete operation failed" },
       { status: 500 },
     );
-  }
-}
-
-function extractFilePath(publicUrl: string): string | null {
-  try {
-    const url = new URL(publicUrl);
-    const pathParts = url.pathname.split("/");
-    // Extract path after /object/public/bucket-name/
-    const bucketIndex = pathParts.indexOf(STORAGE_BUCKET);
-    if (bucketIndex !== -1 && bucketIndex + 1 < pathParts.length) {
-      return pathParts.slice(bucketIndex + 1).join("/");
-    }
-    return null;
-  } catch {
-    return null;
   }
 }

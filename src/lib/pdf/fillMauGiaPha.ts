@@ -1,3 +1,5 @@
+// File: src/lib/pdf/fillMauGiaPha.ts
+
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { readFile } from "node:fs/promises";
@@ -27,6 +29,10 @@ const FONT_PATH = path.join(process.cwd(), "public", "fonts", "NotoSans-Regular.
 
 const DEFAULT_STAMP_FONT_SIZE = 10;
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return "";
   return preparePdfText(value);
@@ -45,17 +51,54 @@ async function embedVietnameseFont(pdf: PDFDocument, stampText: string) {
   return font;
 }
 
-async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
+/**
+ * Fetch image bytes from an absolute URL.
+ * Returns `null` on any network or HTTP error so callers can skip gracefully.
+ */
+async function fetchImageBytes(url: string): Promise<{ bytes: Uint8Array; contentType: string } | null> {
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
     const buffer = await response.arrayBuffer();
-    return new Uint8Array(buffer);
+    const contentType = response.headers.get("content-type") ?? "";
+    return { bytes: new Uint8Array(buffer), contentType };
   } catch (error) {
-    console.error("Failed to fetch image:", url, error);
+    console.error("Failed to fetch profile picture:", url, error);
     return null;
   }
 }
+
+/**
+ * Detect image type from magic bytes, falling back to the Content-Type header
+ * (or the URL file extension as a last resort).
+ *
+ * Returns `"jpeg"`, `"png"`, or `null` (unsupported — e.g. WebP).
+ *
+ * Note: pdf-lib only supports JPEG and PNG.  WebP is not embeddable without
+ * a conversion step.  Images uploaded after the client-side resize are always
+ * JPEG so they will always embed successfully.
+ */
+function detectImageType(bytes: Uint8Array, contentType: string, url: string): "jpeg" | "png" | null {
+  // Magic bytes take priority — they are authoritative regardless of headers.
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "png";
+
+  // Fall back to Content-Type header.
+  if (contentType.includes("jpeg") || contentType.includes("jpg")) return "jpeg";
+  if (contentType.includes("png")) return "png";
+
+  // Last resort: URL extension.
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
+  if (ext === "jpg" || ext === "jpeg") return "jpeg";
+  if (ext === "png") return "png";
+
+  // WebP / unknown — pdf-lib cannot embed these.
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Stamp value builders
+// ---------------------------------------------------------------------------
 
 function getStampValues(profile: DevoteeProfileBundle): Record<MauGiaPhaFieldKey, string> {
   const { devotee, afterlife } = profile;
@@ -116,6 +159,10 @@ function getLineSectionValues(profile: DevoteeProfileBundle) {
   return { roles, achievements, comments };
 }
 
+// ---------------------------------------------------------------------------
+// Draw helpers
+// ---------------------------------------------------------------------------
+
 function stampField(
   page: PDFPage,
   font: PDFFont,
@@ -163,7 +210,71 @@ function stampLineSection(
 }
 
 /**
+ * Embed the devotee's profile picture into `pdf` at the designated anchor position.
+ *
+ * Silently skips if:
+ *  - the URL is absent or the image cannot be fetched,
+ *  - the format is not JPEG or PNG (e.g. legacy WebP uploads),
+ *  - any other embedding error occurs.
+ *
+ * All new uploads are resized to JPEG on the client before upload, so they
+ * will always embed successfully.
+ */
+async function embedProfilePicture(pdf: PDFDocument, pages: PDFPage[], profilePictureUrl: string): Promise<void> {
+  const result = await fetchImageBytes(profilePictureUrl);
+  if (!result) return;
+
+  const { bytes: imageBytes, contentType } = result;
+  const imageType = detectImageType(imageBytes, contentType, profilePictureUrl);
+
+  if (!imageType) {
+    // WebP or unknown — pdf-lib cannot embed; skip silently.
+    console.warn(
+      "Profile picture skipped in PDF: unsupported format (not JPEG or PNG).",
+      profilePictureUrl,
+    );
+    return;
+  }
+
+  try {
+    const anchor = MAU_GIA_PHA_PROFILE_PICTURE_ANCHOR;
+    const page = pages[anchor.pageIndex];
+    if (!page) return;
+
+    const image =
+      imageType === "jpeg"
+        ? await pdf.embedJpg(imageBytes)
+        : await pdf.embedPng(imageBytes);
+
+    // Scale the image to fit the anchor box while preserving aspect ratio.
+    const { width: imgW, height: imgH } = image.size();
+    const scale = Math.min(anchor.width / imgW, anchor.height / imgH);
+    const drawW = imgW * scale;
+    const drawH = imgH * scale;
+
+    // Centre within the anchor box.
+    const offsetX = (anchor.width - drawW) / 2;
+    const offsetY = (anchor.height - drawH) / 2;
+
+    page.drawImage(image, {
+      x: anchor.x + offsetX,
+      y: anchor.y + offsetY,
+      width: drawW,
+      height: drawH,
+    });
+  } catch (imageError) {
+    console.error("Failed to embed profile picture in PDF:", imageError);
+    // Non-fatal — continue generating the rest of the PDF.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+
+/**
  * Loads the official static template and stamps devotee data onto each blank line.
+ * Also embeds the devotee's profile picture into the designated photo box.
  */
 export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<Uint8Array> {
   const { devotee } = profile;
@@ -176,6 +287,7 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
     templateBytes = null;
   }
 
+  // --- Fallback: no template ---
   if (!templateBytes) {
     const doc = await PDFDocument.create();
     const stampText = preparePdfText(devotee.full_name);
@@ -199,62 +311,32 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
     return doc.save();
   }
 
+  // --- Normal path ---
   try {
     const pdf = await PDFDocument.load(templateBytes);
     const stampValues = getStampValues(profile);
     const trainingStampValues = getTrainingStampValues(profile);
     const lineSectionValues = getLineSectionValues(profile);
+
     const font = await embedVietnameseFont(
       pdf,
       collectPdfStampText([
         ...Object.values(stampValues),
-        ...[...trainingStampValues.values()].flatMap((value) => [value.completedDate, value.decisionNo]),
+        ...[...trainingStampValues.values()].flatMap((v) => [v.completedDate, v.decisionNo]),
         ...lineSectionValues.roles,
         ...lineSectionValues.achievements,
         ...lineSectionValues.comments,
       ]),
     );
+
     const pages = pdf.getPages();
 
-    // Embed profile picture if available
+    // --- Embed profile picture ---
     if (devotee.profile_picture_url) {
-      const imageBytes = await fetchImageBytes(devotee.profile_picture_url);
-      if (imageBytes) {
-        try {
-          const anchor = MAU_GIA_PHA_PROFILE_PICTURE_ANCHOR;
-          const page = pages[anchor.pageIndex];
-          if (page) {
-            let image;
-            // Detect image type and embed accordingly
-            if (imageBytes[0] === 0xff && imageBytes[1] === 0xd8) {
-              // JPEG
-              image = await pdf.embedJpg(imageBytes);
-            } else if (
-              imageBytes[0] === 0x89 &&
-              imageBytes[1] === 0x50 &&
-              imageBytes[2] === 0x4e &&
-              imageBytes[3] === 0x47
-            ) {
-              // PNG
-              image = await pdf.embedPng(imageBytes);
-            }
-
-            if (image) {
-              page.drawImage(image, {
-                x: anchor.x,
-                y: anchor.y,
-                width: anchor.width,
-                height: anchor.height,
-              });
-            }
-          }
-        } catch (imageError) {
-          console.error("Failed to embed profile picture:", imageError);
-          // Continue without image rather than failing
-        }
-      }
+      await embedProfilePicture(pdf, pages, devotee.profile_picture_url);
     }
 
+    // --- Stamp text fields ---
     for (const [fieldKey, anchor] of Object.entries(MAU_GIA_PHA_STAMP_ANCHORS) as [
       MauGiaPhaFieldKey,
       MauGiaPhaStampAnchor,
@@ -262,10 +344,10 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
       const value = stampValues[fieldKey];
       const page = pages[anchor.pageIndex];
       if (!page || !value) continue;
-
       stampField(page, font, anchor, value);
     }
 
+    // --- Stamp training records ---
     for (const [key, values] of trainingStampValues.entries()) {
       const anchors = MAU_GIA_PHA_TRAINING_ANCHORS[key];
       const completedDatePage = pages[anchors.completedDate.pageIndex];
@@ -279,6 +361,7 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
       }
     }
 
+    // --- Stamp line sections ---
     stampLineSection(pages, font, MAU_GIA_PHA_LINE_SECTIONS.roles, lineSectionValues.roles);
     stampLineSection(pages, font, MAU_GIA_PHA_LINE_SECTIONS.achievements, lineSectionValues.achievements);
     stampLineSection(pages, font, MAU_GIA_PHA_LINE_SECTIONS.comments, lineSectionValues.comments);
@@ -287,6 +370,7 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
   } catch (error) {
     console.error("Failed to fill MauGiaPha PDF:", error);
 
+    // Graceful fallback page.
     const doc = await PDFDocument.create();
     const stampText = preparePdfText(devotee.full_name);
     const font = await embedVietnameseFont(doc, stampText);
