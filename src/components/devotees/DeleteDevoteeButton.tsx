@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 type DeleteDevoteeButtonProps = {
   devoteeId: string;
@@ -12,13 +13,11 @@ type DeleteDevoteeButtonProps = {
 
 export function DeleteDevoteeButton({ devoteeId }: DeleteDevoteeButtonProps) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function deleteDevotee() {
-    const confirmed = window.confirm("Bạn có chắc muốn xóa hồ sơ Phật tử này? Thao tác này không thể hoàn tác.");
-    if (!confirmed) return;
-
     setLoading(true);
     setError(null);
 
@@ -33,6 +32,7 @@ export function DeleteDevoteeButton({ devoteeId }: DeleteDevoteeButtonProps) {
         throw new Error(body?.error ?? `Request failed (${response.status})`);
       }
 
+      setOpen(false);
       router.push("/devotees");
       router.refresh();
     } catch (deleteError) {
@@ -43,16 +43,32 @@ export function DeleteDevoteeButton({ devoteeId }: DeleteDevoteeButtonProps) {
   }
 
   return (
-    <div className="flex flex-col items-start gap-2 sm:items-end">
-      <Button type="button" variant="outline" onClick={() => void deleteDevotee()} disabled={loading}>
+    <>
+      <Button type="button" variant="outline" onClick={() => setOpen(true)}>
         <Trash2 aria-hidden />
-        {loading ? "Đang xóa..." : "Xóa"}
+        Xóa
       </Button>
-      {error ? (
-        <p className="max-w-xs text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
+
+      <Modal
+        open={open}
+        onClose={() => !loading && setOpen(false)}
+        title="Xóa hồ sơ đạo hữu"
+        description="Bạn có chắc muốn xóa hồ sơ này? Thao tác này không thể hoàn tác."
+      >
+        {error ? (
+          <p className="mb-4 text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+            Hủy
+          </Button>
+          <Button type="button" variant="default" onClick={() => void deleteDevotee()} disabled={loading}>
+            {loading ? "Đang xóa..." : "Xóa hồ sơ"}
+          </Button>
+        </div>
+      </Modal>
+    </>
   );
 }

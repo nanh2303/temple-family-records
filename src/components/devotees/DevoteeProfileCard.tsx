@@ -8,9 +8,10 @@ type DevoteeProfileCardProps = {
 
 export function DevoteeProfileSection({ title, children }: DevoteeProfileCardProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
+    <Card className="overflow-hidden shadow-sm transition-shadow hover:shadow-md hover:shadow-zinc-900/5">
+      <div className="accent-bar h-0.5 w-full opacity-40" />
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base text-zinc-800">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 text-sm text-zinc-700">{children}</CardContent>
     </Card>
@@ -21,7 +22,7 @@ type FieldProps = { label: string; value: string | null | undefined };
 
 export function ProfileField({ label, value }: FieldProps) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+    <div className="flex flex-col gap-0.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-50 sm:flex-row sm:gap-3">
       <span className="min-w-[10rem] font-medium text-zinc-900">{label}</span>
       <span className="text-zinc-700">{value && String(value).length > 0 ? value : "—"}</span>
     </div>
@@ -33,12 +34,12 @@ type ProfilePictureProps = { url: string | null | undefined };
 export function ProfilePicture({ url }: ProfilePictureProps) {
   if (!url) return null;
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center pb-2">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
-        alt="Profile picture"
-        className="h-48 w-48 rounded-lg object-cover shadow-md"
+        alt="Ảnh đại diện"
+        className="size-32 rounded-xl object-cover shadow-md ring-2 ring-amber-100 transition-transform hover:scale-[1.02]"
       />
     </div>
   );
@@ -64,7 +65,6 @@ export function profileBasics(devotee: DevoteeRecord, afterlife?: DevoteeAfterli
       <ProfileField label="Tên Mẹ" value={devotee.mother_name} />
       <ProfileField label="Tạ thế ngày" value={afterlife?.death_date} />
       <ProfileField label="Mộ chí tại" value={afterlife?.grave_location} />
-      {afterlife?.note ? <ProfileField label="Ghi chú (hậu thế)" value={afterlife.note} /> : null}
     </>
   );
 }

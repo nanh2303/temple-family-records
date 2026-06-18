@@ -465,6 +465,12 @@ export function DevoteeForm(props: DevoteeFormProps) {
       setErrors(fieldErrors);
       setMessage(formError);
       setLoading(false);
+      requestAnimationFrame(() => {
+        const firstInvalid = document.querySelector("[aria-invalid='true']");
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
       return;
     }
 
@@ -790,7 +796,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-zinc-200/80 glass-panel px-4 py-4 shadow-lg shadow-zinc-900/5 sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md">
         <Button asChild type="button" variant="outline">
           <Link href={cancelHref}>
             <X aria-hidden />

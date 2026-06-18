@@ -111,16 +111,31 @@ export async function POST(request: Request, context: RouteContext) {
       }
     }
 
-    // Upload new file
-    const fileExtension = file.name.split(".").pop() || "jpg";
+    // Upload new file (normalize WebP to JPEG for PDF compatibility)
+    let uploadBuffer: Buffer;
+    let contentType: string;
+    let fileExtension: string;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    if (file.type === "image/webp") {
+      const sharp = (await import("sharp")).default;
+      uploadBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+      contentType = "image/jpeg";
+      fileExtension = "jpg";
+    } else {
+      uploadBuffer = buffer;
+      contentType = file.type;
+      fileExtension = file.name.split(".").pop() || "jpg";
+    }
+
     const fileName = `${parsedId.data}-${Date.now()}.${fileExtension}`;
     const filePath = `${parsedId.data}/${fileName}`;
 
-    const buffer = await file.arrayBuffer();
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, buffer, {
-        contentType: file.type,
+      .upload(filePath, uploadBuffer, {
+        contentType,
         upsert: false,
       });
 
