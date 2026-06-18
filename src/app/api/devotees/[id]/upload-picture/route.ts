@@ -16,6 +16,10 @@ type AdminSupabaseClient = ReturnType<typeof createAdminSupabaseClient>;
 async function ensureProfilePictureBucket(supabase: AdminSupabaseClient) {
   const { data: bucket, error } = await supabase.storage.getBucket(STORAGE_BUCKET);
 
+  if (error && !error.message.toLowerCase().includes("not found")) {
+    throw new Error(error.message);
+  }
+
   if (!bucket) {
     const { error: createError } = await supabase.storage.createBucket(STORAGE_BUCKET, {
       public: true,
@@ -27,15 +31,6 @@ async function ensureProfilePictureBucket(supabase: AdminSupabaseClient) {
       throw new Error(createError.message);
     }
     return;
-  }
-
-  // error may not have a typed 'message' property; guard safely
-  if (
-    error &&
-    typeof (error as any).message === "string" &&
-    !( (error as any).message as string).toLowerCase().includes("not found")
-  ) {
-    throw new Error((error as any).message);
   }
 
   if (!bucket.public) {
