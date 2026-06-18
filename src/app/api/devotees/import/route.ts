@@ -8,15 +8,14 @@ import {
   parseDevoteeCsv,
   type ExistingDevoteeForImport,
 } from "@/lib/import/devotee-csv";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const MAX_CSV_FILE_BYTES = 2 * 1024 * 1024;
 const INSERT_BATCH_SIZE = 500;
 
 type ImportAction = "preview" | "commit";
-type ServerSupabaseClient = Awaited<
-  ReturnType<typeof createServerSupabaseClient>
->;
+type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
 function isImportAction(
   value: FormDataEntryValue | null,
@@ -33,7 +32,7 @@ async function readCsvFile(formData: FormData) {
   return file.text();
 }
 
-async function fetchExistingDevotees(supabase: ServerSupabaseClient) {
+async function fetchExistingDevotees(supabase: SupabaseClient) {
   const pageSize = 1_000;
   let from = 0;
   const devotees: ExistingDevoteeForImport[] = [];
@@ -58,7 +57,7 @@ async function fetchExistingDevotees(supabase: ServerSupabaseClient) {
 }
 
 async function insertInBatches(
-  supabase: ServerSupabaseClient,
+  supabase: SupabaseClient,
   rows: ReturnType<typeof getImportableRows>,
 ) {
   const inserted: { id: string; full_name: string }[] = [];
@@ -109,10 +108,11 @@ export async function POST(request: Request) {
 
   const actionValue = formData.get("action");
   const action = isImportAction(actionValue) ? actionValue : "preview";
+  const adminSupabase = createAdminSupabaseClient();
 
   try {
     const csvText = await readCsvFile(formData);
-    const existingDevotees = await fetchExistingDevotees(supabase);
+    const existingDevotees = await fetchExistingDevotees(adminSupabase);
     const parsedPreview = parseDevoteeCsv(csvText);
     const preview = applyDevoteeCsvDuplicateChecks(
       parsedPreview,
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const inserted = await insertInBatches(supabase, importableRows);
+    const inserted = await insertInBatches(adminSupabase, importableRows);
     return NextResponse.json({
       action,
       insertedCount: inserted.length,
