@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" className={`${notoSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-zinc-50 font-sans text-zinc-900">{children}</body>
+      <body className="min-h-full flex flex-col bg-background font-sans text-foreground">{children}</body>
     </html>
   );
 }

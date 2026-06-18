@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileSpreadsheet,
+  Loader2,
   Upload,
 } from "lucide-react";
 import Link from "next/link";
@@ -43,7 +44,7 @@ type ImportResponse = DevoteeCsvImportPreview & {
 function statusClassName(status: DevoteeCsvImportRow["status"]) {
   if (status === "error") return "bg-red-50 text-red-700 ring-red-200";
   if (status === "warning") return "bg-amber-50 text-amber-700 ring-amber-200";
-  return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+  return "bg-lime-50 text-lime-700 ring-lime-200";
 }
 
 function formatDelimiter(delimiter?: string) {
@@ -56,7 +57,7 @@ function formatDelimiter(delimiter?: string) {
 
 function RowMessages({ row }: { row: DevoteeCsvImportRow }) {
   const messages = [...row.errors, ...row.warnings];
-  if (messages.length === 0) return <span className="text-zinc-400">-</span>;
+  if (messages.length === 0) return <span className="text-muted-foreground">-</span>;
   return (
     <ul className="space-y-1">
       {messages.map((message) => (
@@ -118,10 +119,10 @@ export function DevoteeCsvImportPageClient() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             Import hồ sơ từ CSV
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Upload CSV để kiểm tra header, validate từng dòng, phát hiện trùng,
             rồi mới ghi các dòng hợp lệ vào database.
           </p>
@@ -153,13 +154,13 @@ export function DevoteeCsvImportPageClient() {
               }}
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="sticky top-[4.125rem] z-10 -mx-5 flex flex-wrap gap-2 border-y border-border bg-card/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:px-6">
             <Button
               type="button"
               disabled={!file || Boolean(loadingAction)}
               onClick={() => void submitCsv("preview")}
             >
-              <FileSpreadsheet aria-hidden />
+              {loadingAction === "preview" ? <Loader2 className="animate-spin" aria-hidden /> : <FileSpreadsheet aria-hidden />}
               {loadingAction === "preview"
                 ? "Đang kiểm tra..."
                 : "Kiểm tra CSV"}
@@ -170,7 +171,7 @@ export function DevoteeCsvImportPageClient() {
               disabled={!canImport || Boolean(loadingAction)}
               onClick={() => void submitCsv("commit")}
             >
-              <Upload aria-hidden />
+              {loadingAction === "commit" ? <Loader2 className="animate-spin" aria-hidden /> : <Upload aria-hidden />}
               {loadingAction === "commit"
                 ? "Đang import..."
                 : `Import ${result?.summary.importableRows ?? 0} dòng hợp lệ`}
@@ -178,7 +179,7 @@ export function DevoteeCsvImportPageClient() {
           </div>
           {message ? (
             <p
-              className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700"
+              className="rounded-md border border-border bg-stone-50 px-4 py-3 text-sm text-stone-700"
               role="status"
             >
               {message}
@@ -200,12 +201,12 @@ export function DevoteeCsvImportPageClient() {
             {DEVOTEE_CSV_FIELD_CONFIG.map((field) => (
               <div
                 key={field.field}
-                className="rounded-md border border-zinc-200 p-3"
+                className="rounded-md border border-border bg-card p-3 transition-colors duration-200 hover:bg-stone-50"
               >
-                <p className="text-sm font-medium text-zinc-900">
+                <p className="text-sm font-semibold text-foreground">
                   {field.label}
                 </p>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   Ví dụ: {field.examples.slice(0, 3).join(", ")}
                 </p>
               </div>
@@ -219,7 +220,7 @@ export function DevoteeCsvImportPageClient() {
           <div className="grid gap-4 sm:grid-cols-4">
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-zinc-500">Tổng dòng</p>
+                <p className="text-sm text-muted-foreground">Tổng dòng</p>
                 <p className="mt-1 text-2xl font-semibold">
                   {result.summary.totalRows}
                 </p>
@@ -227,15 +228,15 @@ export function DevoteeCsvImportPageClient() {
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-zinc-500">Có thể import</p>
-                <p className="mt-1 text-2xl font-semibold text-emerald-700">
+                <p className="text-sm text-muted-foreground">Có thể import</p>
+                <p className="mt-1 text-2xl font-semibold text-lime-700">
                   {result.summary.importableRows}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-zinc-500">Cảnh báo</p>
+                <p className="text-sm text-muted-foreground">Cảnh báo</p>
                 <p className="mt-1 text-2xl font-semibold text-amber-700">
                   {result.summary.warningRows}
                 </p>
@@ -243,7 +244,7 @@ export function DevoteeCsvImportPageClient() {
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-zinc-500">Lỗi</p>
+                <p className="text-sm text-muted-foreground">Lỗi</p>
                 <p className="mt-1 text-2xl font-semibold text-red-700">
                   {result.summary.errorRows}
                 </p>
@@ -273,7 +274,7 @@ export function DevoteeCsvImportPageClient() {
                   </ul>
                 </div>
               ) : (
-                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                <div className="rounded-md border border-lime-200 bg-lime-50 p-4 text-sm text-lime-700">
                   <div className="flex items-center gap-2 font-medium">
                     <CheckCircle2 aria-hidden className="size-4" />
                     Header đọc được. Các dòng không lỗi có thể import.
@@ -288,16 +289,16 @@ export function DevoteeCsvImportPageClient() {
                 </p>
               ) : null}
               {result.truncated ? (
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted-foreground">
                   Preview đang bị rút gọn. File có nhiều hơn{" "}
                   {CSV_PREVIEW_ROW_LIMIT} dòng, nhưng summary vẫn tính trên toàn
                   bộ file.
                 </p>
               ) : null}
 
-              <div className="overflow-x-auto rounded-md border border-zinc-200">
-                <table className="min-w-full divide-y divide-zinc-200 text-sm">
-                  <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500">
+              <div className="max-h-[34rem] overflow-auto rounded-md border border-border">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="sticky top-0 z-10 bg-stone-50 text-left text-xs uppercase text-muted-foreground shadow-sm">
                     <tr>
                       <th className="px-3 py-2">Dòng</th>
                       <th className="px-3 py-2">Trạng thái</th>
@@ -308,10 +309,10 @@ export function DevoteeCsvImportPageClient() {
                       <th className="px-3 py-2">Ghi chú</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100 bg-white">
+                  <tbody className="divide-y divide-stone-100 bg-card">
                     {result.rows.map((row) => (
-                      <tr key={row.rowNumber}>
-                        <td className="whitespace-nowrap px-3 py-3 text-zinc-500">
+                      <tr key={row.rowNumber} className="transition-colors duration-150 hover:bg-stone-50">
+                        <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
                           {row.rowNumber}
                         </td>
                         <td className="whitespace-nowrap px-3 py-3">
@@ -321,21 +322,21 @@ export function DevoteeCsvImportPageClient() {
                             {STATUS_LABELS[row.status]}
                           </span>
                         </td>
-                        <td className="min-w-48 px-3 py-3 font-medium text-zinc-900">
+                        <td className="min-w-48 px-3 py-3 font-semibold text-foreground">
                           {row.values.full_name || "-"}
                         </td>
-                        <td className="min-w-36 px-3 py-3 text-zinc-700">
+                        <td className="min-w-36 px-3 py-3 text-stone-700">
                           {row.values.dharma_name || "-"}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-3 text-zinc-700">
+                        <td className="whitespace-nowrap px-3 py-3 text-stone-700">
                           {row.values.birth_date || "-"}
                         </td>
-                        <td className="min-w-40 px-3 py-3 text-zinc-700">
+                        <td className="min-w-40 px-3 py-3 text-stone-700">
                           {row.values.family_registry_no ||
                             row.values.bhd_registry_no ||
                             "-"}
                         </td>
-                        <td className="min-w-80 px-3 py-3 text-xs text-zinc-600">
+                        <td className="min-w-80 px-3 py-3 text-xs text-stone-600">
                           <RowMessages row={row} />
                         </td>
                       </tr>

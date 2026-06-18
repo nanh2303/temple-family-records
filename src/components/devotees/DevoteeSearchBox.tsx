@@ -26,14 +26,14 @@ export function DevoteeSearchBox({ value, onChange, className, disabled, loading
       <div className={cn("search-glow relative rounded-lg transition-shadow duration-200", loading && "animate-pulse-soft")}>
         <Search
           className={cn(
-            "pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400 transition-colors",
-            value && "text-amber-600",
+            "pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground transition-colors",
+            value && "text-primary",
           )}
           aria-hidden
         />
         <Input
           id={id}
-          className="h-12 pl-10 text-base shadow-sm"
+          className="h-12 rounded-lg border-border pl-10 pr-24 text-base shadow-sm"
           placeholder="Ví dụ: Dung Quảng Ngãi, Tâm Đức, số hồ sơ…"
           value={value}
           disabled={disabled}

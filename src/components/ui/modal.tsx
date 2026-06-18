@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, description, children, className }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 px-4 py-6 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/55 px-4 py-6 backdrop-blur-sm animate-fade-in"
       onMouseDown={onClose}
     >
       <div
@@ -43,7 +43,7 @@ export function Modal({ open, onClose, title, description, children, className }
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "animate-scale-in w-full max-w-lg overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/20",
+          "animate-scale-in w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-2xl shadow-stone-900/20",
           className,
         )}
         onMouseDown={(event) => event.stopPropagation()}
@@ -52,10 +52,10 @@ export function Modal({ open, onClose, title, description, children, className }
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 id={titleId} className="text-lg font-semibold tracking-tight text-zinc-900">
+              <h2 id={titleId} className="text-lg font-semibold text-foreground">
                 {title}
               </h2>
-              {description ? <p className="mt-1 text-sm text-zinc-600">{description}</p> : null}
+              {description ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p> : null}
             </div>
             <Button type="button" variant="ghost" size="icon" aria-label="Đóng" onClick={onClose}>
               <X aria-hidden />

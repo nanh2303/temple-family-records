@@ -56,7 +56,7 @@ export function DeleteDevoteeButton({ devoteeId }: DeleteDevoteeButtonProps) {
         description="Bạn có chắc muốn xóa hồ sơ này? Thao tác này không thể hoàn tác."
       >
         {error ? (
-          <p className="mb-4 text-sm text-red-600" role="alert">
+          <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">
             {error}
           </p>
         ) : null}
@@ -64,7 +64,7 @@ export function DeleteDevoteeButton({ devoteeId }: DeleteDevoteeButtonProps) {
           <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
             Hủy
           </Button>
-          <Button type="button" variant="default" onClick={() => void deleteDevotee()} disabled={loading}>
+          <Button type="button" variant="destructive" onClick={() => void deleteDevotee()} disabled={loading}>
             {loading ? "Đang xóa..." : "Xóa hồ sơ"}
           </Button>
         </div>

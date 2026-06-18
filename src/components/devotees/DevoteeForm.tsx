@@ -289,7 +289,6 @@ export function DevoteeForm(props: DevoteeFormProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [uploadPictureError, setUploadPictureError] = useState<string | null>(null);
-  const [pendingProfilePictureFile, setPendingProfilePictureFile] = useState<File | null>(null);
   const [pendingProfilePictureObjectUrl, setPendingProfilePictureObjectUrl] = useState<string | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
     props.initialValues?.profile_picture_url || null,
@@ -347,7 +346,6 @@ export function DevoteeForm(props: DevoteeFormProps) {
       if (current) URL.revokeObjectURL(current);
       return nextObjectUrl;
     });
-    setPendingProfilePictureFile(file);
     setProfilePicturePreview(nextObjectUrl);
     setValues((current) => ({ ...current, profile_picture_url: "" }));
   }
@@ -415,7 +413,6 @@ export function DevoteeForm(props: DevoteeFormProps) {
         URL.revokeObjectURL(pendingProfilePictureObjectUrl);
       }
       setPendingProfilePictureObjectUrl(null);
-      setPendingProfilePictureFile(null);
       setProfilePicturePreview(null);
       setUploadPictureError(null);
       setValues((current) => ({ ...current, profile_picture_url: "" }));
@@ -505,9 +502,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
   }
 
   return (
-    <form className="space-y-6" onSubmit={onSubmit}>
+    <form className="space-y-5" onSubmit={onSubmit}>
       {message ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">
           {message}
         </p>
       ) : null}
@@ -516,55 +513,56 @@ export function DevoteeForm(props: DevoteeFormProps) {
         // Special handling for profile picture section
         if (section.title === "Ảnh đại diện") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} className="overflow-hidden">
+              <div className="accent-bar h-0.5 w-full opacity-70" />
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 {uploadPictureError ? (
-                  <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
                     {uploadPictureError}
                   </p>
                 ) : null}
-                {profilePicturePreview ? (
-                  <div className="space-y-2">
-                    <div className="relative inline-block">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={profilePicturePreview}
-                        alt="Profile"
-                        className="h-32 w-32 rounded-lg object-cover"
-                      />
-                    </div>
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                  <div className="flex size-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted text-sm text-muted-foreground">
+                    {profilePicturePreview ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={profilePicturePreview} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      <span>Chưa có ảnh</span>
+                    )}
                   </div>
-                ) : null}
-                <div className="space-y-2">
-                  <Label htmlFor="profile-picture-input">
-                    {profilePicturePreview ? "Thay đổi ảnh đại diện" : "Tải lên ảnh đại diện"}
-                  </Label>
-                  <Input
-                    id="profile-picture-input"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    disabled={uploadingPicture || props.mode === "create"}
-                    onChange={handleProfilePictureUpload}
-                  />
-                  <p className="text-xs text-zinc-500">
-                    Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB. {props.mode === "create" ? "Vui lòng lưu hồ sơ trước khi tải ảnh." : ""}
-                  </p>
+                  <div className="min-w-0 flex-1 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-picture-input">
+                        {profilePicturePreview ? "Thay đổi ảnh đại diện" : "Tải lên ảnh đại diện"}
+                      </Label>
+                      <Input
+                        id="profile-picture-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={uploadingPicture || props.mode === "create"}
+                        onChange={handleProfilePictureUpload}
+                      />
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB. {props.mode === "create" ? "Vui lòng lưu hồ sơ trước khi tải ảnh." : ""}
+                      </p>
+                    </div>
+                    {profilePicturePreview ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingPicture}
+                        onClick={handleRemoveProfilePicture}
+                      >
+                        {uploadingPicture ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+                        Xóa ảnh đại diện
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-                {profilePicturePreview ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingPicture}
-                    onClick={handleRemoveProfilePicture}
-                  >
-                    {uploadingPicture ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
-                    Xóa ảnh đại diện
-                  </Button>
-                ) : null}
               </CardContent>
             </Card>
           );
@@ -602,7 +600,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
                       onChange={(event) => updateField(field.name, event.target.value)}
                     />
                     {error ? (
-                      <p id={`${inputId}-error`} className="text-xs text-red-600">
+                      <p id={`${inputId}-error`} className="text-xs font-medium text-red-600">
                         {error}
                       </p>
                     ) : null}
@@ -623,7 +621,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
           <CardContent className="space-y-6">
             {groupTrainingDefinitions(category).map(([group, definitions]) => (
               <div key={group} className="space-y-3">
-                <h4 className="text-sm font-semibold text-zinc-900">{group}</h4>
+                <h4 className="text-sm font-semibold text-foreground">{group}</h4>
                 <div className="space-y-3">
                   {definitions.map((definition) => {
                     const dateInputId = `training-${definition.key}-date`;
@@ -631,9 +629,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
                     return (
                       <div
                         key={definition.key}
-                        className="grid gap-3 rounded-md border border-zinc-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,12rem)_minmax(0,1fr)]"
+                        className="grid gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-200 hover:bg-stone-50 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,12rem)_minmax(0,1fr)]"
                       >
-                        <div className="flex items-center text-sm font-medium text-zinc-900">{definition.label}</div>
+                        <div className="flex items-center text-sm font-semibold text-foreground">{definition.label}</div>
                         <div className="space-y-2">
                           <Label htmlFor={dateInputId}>Ngày</Label>
                           <Input
@@ -667,9 +665,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
           <CardDescription>Các dòng này được in vào mục E trên mẫu Gia Phả.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {roles.length === 0 ? <p className="text-sm text-zinc-500">Chưa có chức vụ nào.</p> : null}
+          {roles.length === 0 ? <p className="text-sm text-muted-foreground">Chưa có chức vụ nào.</p> : null}
           {roles.map((role, index) => (
-            <div key={index} className="grid gap-3 rounded-md border border-zinc-200 p-3 sm:grid-cols-2">
+            <div key={index} className="grid gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-200 hover:bg-stone-50 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor={`role-${index}-title`}>Chức vụ</Label>
                 <Input
@@ -717,7 +715,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
               <div className="sm:col-span-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="destructive"
                   size="sm"
                   onClick={() => setRoles((current) => current.filter((_, roleIndex) => roleIndex !== index))}
                 >
@@ -751,10 +749,10 @@ export function DevoteeForm(props: DevoteeFormProps) {
         <CardContent className="space-y-6">
           {NOTE_SECTIONS.map((section) => (
             <div key={section.note_type} className="space-y-3">
-              <h4 className="text-sm font-semibold text-zinc-900">{section.title}</h4>
-              {notes[section.note_type].length === 0 ? <p className="text-sm text-zinc-500">Chưa có dữ liệu.</p> : null}
+              <h4 className="text-sm font-semibold text-foreground">{section.title}</h4>
+              {notes[section.note_type].length === 0 ? <p className="text-sm text-muted-foreground">Chưa có dữ liệu.</p> : null}
               {notes[section.note_type].map((note, index) => (
-                <div key={index} className="space-y-2 rounded-md border border-zinc-200 p-3">
+                <div key={index} className="space-y-2 rounded-md border border-border bg-card p-3 transition-colors duration-200 hover:bg-stone-50">
                   <Label htmlFor={`note-${section.note_type}-${index}`}>Nội dung</Label>
                   <Textarea
                     id={`note-${section.note_type}-${index}`}
@@ -763,7 +761,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
                   />
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="destructive"
                     size="sm"
                     onClick={() =>
                       setNotes((current) => ({
@@ -796,7 +794,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-zinc-200/80 glass-panel px-4 py-4 shadow-lg shadow-zinc-900/5 sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-border/90 glass-panel px-4 py-4 shadow-lg shadow-stone-900/5 sm:-mx-0 sm:rounded-lg sm:border sm:shadow-md">
         <Button asChild type="button" variant="outline">
           <Link href={cancelHref}>
             <X aria-hidden />
@@ -804,7 +802,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
           </Link>
         </Button>
         <Button type="submit" disabled={loading}>
-          <Save aria-hidden />
+          {loading ? <Loader2 className="animate-spin" aria-hidden /> : <Save aria-hidden />}
           {loading ? "Đang lưu..." : "Lưu"}
         </Button>
       </div>

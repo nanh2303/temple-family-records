@@ -50,9 +50,9 @@ function TrainingRows({
         return (
           <div
             key={definition.key}
-            className="grid gap-1 border-b border-zinc-100 pb-2 last:border-0 sm:grid-cols-[12rem_1fr_1fr]"
+            className="grid gap-1 border-b border-stone-100 pb-2 last:border-0 sm:grid-cols-[12rem_1fr_1fr]"
           >
-            <span className="font-medium text-zinc-900">{definition.label}</span>
+            <span className="font-semibold text-foreground">{definition.label}</span>
             <span>Ngày: {record?.completed_date ?? "—"}</span>
             <span>Quyết định số: {record?.decision_no ?? "—"}</span>
           </div>
@@ -86,12 +86,12 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6">
-      <div className="glass-panel sticky top-14 z-10 -mx-4 rounded-none border-b border-zinc-200/80 px-4 py-4 shadow-sm sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md sm:shadow-zinc-900/5">
+      <div className="glass-panel sticky top-14 z-10 -mx-4 rounded-none border-b border-border/90 px-4 py-4 shadow-sm sm:-mx-0 sm:rounded-lg sm:border sm:shadow-md sm:shadow-stone-900/5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="animate-slide-down">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{devotee.full_name}</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{devotee.full_name}</h1>
             {devotee.dharma_name ? (
-              <p className="mt-1 text-sm text-amber-800/80">Pháp danh: {devotee.dharma_name}</p>
+              <p className="mt-1 text-sm font-medium text-accent-foreground">Pháp danh: {devotee.dharma_name}</p>
             ) : null}
           </div>
           <div className="flex flex-wrap items-start gap-2">
@@ -135,16 +135,16 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
         </DevoteeProfileSection>
       ) : null}
 
-      <DevoteeProfileSection title="Chức vụ từng đảm nhận">
+        <DevoteeProfileSection title="Chức vụ từng đảm nhận">
         {roles.length === 0 ? (
-          <p className="text-zinc-500">Chưa có dữ liệu.</p>
+          <p className="text-muted-foreground">Chưa có dữ liệu.</p>
         ) : (
           <ul className="space-y-2">
             {roles.map((r) => (
-              <li key={r.id} className="border-b border-zinc-100 pb-2 last:border-0">
-                <p className="font-medium text-zinc-900">{r.role_title}</p>
-                {r.organization ? <p className="text-zinc-600">{r.organization}</p> : null}
-                <p className="text-xs text-zinc-500">
+              <li key={r.id} className="border-b border-stone-100 pb-2 last:border-0">
+                <p className="font-semibold text-foreground">{r.role_title}</p>
+                {r.organization ? <p className="text-stone-600">{r.organization}</p> : null}
+                <p className="text-xs text-muted-foreground">
                   {r.start_date ?? "?"} — {r.end_date ?? "?"}
                   {r.note ? ` — ${r.note}` : ""}
                 </p>
@@ -156,7 +156,7 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
 
       <DevoteeProfileSection title="Thành tích cá nhân">
         {achievements.length === 0 ? (
-          <p className="text-zinc-500">Chưa có dữ liệu.</p>
+          <p className="text-muted-foreground">Chưa có dữ liệu.</p>
         ) : (
           <ul className="list-inside list-disc space-y-1">
             {achievements.map((n) => (
@@ -168,7 +168,7 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
 
       <DevoteeProfileSection title="Nhận xét khác">
         {comments.length === 0 && otherNotes.length === 0 ? (
-          <p className="text-zinc-500">Chưa có dữ liệu.</p>
+          <p className="text-muted-foreground">Chưa có dữ liệu.</p>
         ) : (
           <ul className="space-y-2">
             {[...comments, ...otherNotes].map((n) => (
