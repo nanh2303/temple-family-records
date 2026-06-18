@@ -14,15 +14,15 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div className="animate-slide-down">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Bảng điều khiển</h1>
-        <p className="mt-1 text-sm text-zinc-600">Tổng quan nhanh và tra cứu đạo hữu.</p>
+        <h1 className="text-2xl font-semibold text-foreground">Bảng điều khiển</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Tổng quan nhanh và tra cứu đạo hữu.</p>
       </div>
 
-      <Card className="overflow-hidden shadow-md shadow-zinc-900/5">
+      <Card className="overflow-hidden shadow-md shadow-stone-900/5">
         <div className="accent-bar h-1 w-full" />
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Search className="size-5 text-amber-700" aria-hidden />
+            <Search className="size-5 text-primary" aria-hidden />
             <CardTitle>Tra cứu đạo hữu</CardTitle>
           </div>
           <CardDescription>Nhập từ khóa (có thể không dấu) rồi chuyển tới trang kết quả.</CardDescription>
@@ -37,7 +37,7 @@ export default function DashboardPage() {
           <div className="accent-bar h-1 w-full opacity-60 transition-opacity group-hover:opacity-100" />
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-amber-50 p-2.5 text-amber-800 ring-1 ring-amber-200/60">
+              <div className="rounded-lg bg-accent p-2.5 text-accent-foreground ring-1 ring-amber-200/70">
                 <UserPlus className="size-5" aria-hidden />
               </div>
               <div>
@@ -60,7 +60,7 @@ export default function DashboardPage() {
           <div className="accent-bar h-1 w-full opacity-60 transition-opacity group-hover:opacity-100" />
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-zinc-100 p-2.5 text-zinc-700 ring-1 ring-zinc-200">
+              <div className="rounded-lg bg-muted p-2.5 text-stone-700 ring-1 ring-border">
                 <FileUp className="size-5" aria-hidden />
               </div>
               <div>

@@ -65,8 +65,8 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
     <div className="space-y-6">
       <div className="animate-slide-down flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Tra cứu đạo hữu</h1>
-          <p className="mt-1 text-sm text-zinc-600">
+          <h1 className="text-2xl font-semibold text-foreground">Tra cứu đạo hữu</h1>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Tìm theo mảnh thông tin: tên, pháp danh, quê quán, địa chỉ — hỗ trợ không dấu và dấu sai lệch nhẹ.
           </p>
         </div>
@@ -86,7 +86,7 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-md shadow-zinc-900/5">
+      <Card className="sticky top-[4.125rem] z-20 overflow-hidden shadow-md shadow-stone-900/5">
         <div className="accent-bar h-1 w-full" />
         <CardContent className="p-6">
           <DevoteeSearchBox value={query} onChange={setQuery} loading={loading} />

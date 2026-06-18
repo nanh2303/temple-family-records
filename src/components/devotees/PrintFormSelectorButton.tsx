@@ -34,14 +34,14 @@ export function PrintFormSelectorButton({ devoteeId }: PrintFormSelectorButtonPr
       >
         <div className="space-y-3">
           {FORM_TEMPLATES.length === 0 ? (
-            <p className="text-sm text-zinc-600">Chưa có mẫu in khả dụng.</p>
+            <p className="text-sm text-muted-foreground">Chưa có mẫu in khả dụng.</p>
           ) : (
             FORM_TEMPLATES.map((template) => (
-              <div key={template.id} className="rounded-md border border-zinc-200 p-4">
+              <div key={template.id} className="rounded-md border border-border bg-card p-4 transition-colors duration-200 hover:bg-stone-50">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 className="font-medium text-zinc-900">{template.name}</h3>
-                    <p className="mt-1 text-sm text-zinc-600">{template.description}</p>
+                    <h3 className="font-semibold text-foreground">{template.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{template.description}</p>
                   </div>
                   <Button type="button" size="sm" onClick={() => selectTemplate(template)}>
                     Chọn mẫu này

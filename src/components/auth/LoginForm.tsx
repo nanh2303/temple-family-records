@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -65,8 +66,13 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      {message ? <p className="text-sm text-red-600">{message}</p> : null}
+      {message ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+          {message}
+        </p>
+      ) : null}
       <Button className="w-full" type="submit" disabled={loading}>
+        {loading ? <Loader2 className="animate-spin" aria-hidden /> : null}
         {loading ? "Đang đăng nhập…" : "Đăng nhập"}
       </Button>
     </form>
