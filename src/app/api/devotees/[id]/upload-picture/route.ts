@@ -1,19 +1,56 @@
 import { NextResponse } from "next/server";
 
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { devoteeUuidSchema } from "@/lib/validations/devotee";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const STORAGE_BUCKET = "devotee-profiles";
+const STORAGE_FILE_SIZE_LIMIT = "5MB";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+type AdminSupabaseClient = ReturnType<typeof createAdminSupabaseClient>;
+
+async function ensureProfilePictureBucket(supabase: AdminSupabaseClient) {
+  const { data: bucket, error } = await supabase.storage.getBucket(STORAGE_BUCKET);
+
+  if (error && !error.message.toLowerCase().includes("not found")) {
+    throw new Error(error.message);
+  }
+
+  if (!bucket) {
+    const { error: createError } = await supabase.storage.createBucket(STORAGE_BUCKET, {
+      public: true,
+      allowedMimeTypes: ALLOWED_MIME_TYPES,
+      fileSizeLimit: STORAGE_FILE_SIZE_LIMIT,
+    });
+
+    if (createError) {
+      throw new Error(createError.message);
+    }
+    return;
+  }
+
+  if (!bucket.public) {
+    const { error: updateError } = await supabase.storage.updateBucket(STORAGE_BUCKET, {
+      public: true,
+      allowedMimeTypes: ALLOWED_MIME_TYPES,
+      fileSizeLimit: STORAGE_FILE_SIZE_LIMIT,
+    });
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  }
+}
+
 export async function POST(request: Request, context: RouteContext) {
-  const supabase = await createServerSupabaseClient();
+  const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authSupabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,6 +84,9 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
+    const supabase = createAdminSupabaseClient();
+    await ensureProfilePictureBucket(supabase);
+
     // Check if devotee exists
     const { data: existingDevotee, error: existingError } = await supabase
       .from("devotees")
@@ -71,16 +111,31 @@ export async function POST(request: Request, context: RouteContext) {
       }
     }
 
-    // Upload new file
-    const fileExtension = file.name.split(".").pop() || "jpg";
+    // Upload new file (normalize WebP to JPEG for PDF compatibility)
+    let uploadBuffer: Buffer;
+    let contentType: string;
+    let fileExtension: string;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    if (file.type === "image/webp") {
+      const sharp = (await import("sharp")).default;
+      uploadBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+      contentType = "image/jpeg";
+      fileExtension = "jpg";
+    } else {
+      uploadBuffer = buffer;
+      contentType = file.type;
+      fileExtension = file.name.split(".").pop() || "jpg";
+    }
+
     const fileName = `${parsedId.data}-${Date.now()}.${fileExtension}`;
     const filePath = `${parsedId.data}/${fileName}`;
 
-    const buffer = await file.arrayBuffer();
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, buffer, {
-        contentType: file.type,
+      .upload(filePath, uploadBuffer, {
+        contentType,
         upsert: false,
       });
 
@@ -102,25 +157,6 @@ export async function POST(request: Request, context: RouteContext) {
     if (updateError) {
       // Clean up uploaded file if update fails
       await supabase.storage.from(STORAGE_BUCKET).remove([uploadData.path]);
-      
-      // Log detailed error for debugging
-      console.error("RLS Policy Error Details:", {
-        error: updateError.message,
-        code: updateError.code,
-        details: updateError.details,
-        devoteeId: parsedId.data,
-      });
-      
-      // Check if it's an RLS policy error
-      if (updateError.message.includes("row-level security") || updateError.code === "PGRST100") {
-        return NextResponse.json(
-          { 
-            error: "Database permission denied. Please ensure RLS policies are properly configured. Contact your administrator." 
-          }, 
-          { status: 403 }
-        );
-      }
-      
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
@@ -133,11 +169,11 @@ export async function POST(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(request: Request, context: RouteContext) {
-  const supabase = await createServerSupabaseClient();
+export async function DELETE(_request: Request, context: RouteContext) {
+  const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authSupabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -150,6 +186,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   try {
+    const supabase = createAdminSupabaseClient();
     // Get current profile picture
     const { data: devotee, error: selectError } = await supabase
       .from("devotees")
@@ -178,22 +215,6 @@ export async function DELETE(request: Request, context: RouteContext) {
       .eq("id", parsedId.data);
 
     if (updateError) {
-      console.error("RLS Policy Error Details on DELETE:", {
-        error: updateError.message,
-        code: updateError.code,
-        details: updateError.details,
-        devoteeId: parsedId.data,
-      });
-      
-      if (updateError.message.includes("row-level security") || updateError.code === "PGRST100") {
-        return NextResponse.json(
-          { 
-            error: "Database permission denied. Please ensure RLS policies are properly configured. Contact your administrator." 
-          }, 
-          { status: 403 }
-        );
-      }
-      
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 

@@ -86,26 +86,30 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{devotee.full_name}</h1>
-          {devotee.dharma_name ? <p className="text-sm text-zinc-600">Pháp danh: {devotee.dharma_name}</p> : null}
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <Button asChild variant="outline">
-            <Link href="/devotees">
-              <ArrowLeft aria-hidden />
-              Quay lại
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href={`/devotees/${devotee.id}/edit`}>
-              <Pencil aria-hidden />
-              Chỉnh sửa
-            </Link>
-          </Button>
-          <DeleteDevoteeButton devoteeId={devotee.id} />
-          <PrintFormSelectorButton devoteeId={devotee.id} />
+      <div className="glass-panel sticky top-14 z-10 -mx-4 rounded-none border-b border-zinc-200/80 px-4 py-4 shadow-sm sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md sm:shadow-zinc-900/5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="animate-slide-down">
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{devotee.full_name}</h1>
+            {devotee.dharma_name ? (
+              <p className="mt-1 text-sm text-amber-800/80">Pháp danh: {devotee.dharma_name}</p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-start gap-2">
+            <Button asChild variant="outline">
+              <Link href="/devotees">
+                <ArrowLeft aria-hidden />
+                Quay lại
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={`/devotees/${devotee.id}/edit`}>
+                <Pencil aria-hidden />
+                Chỉnh sửa
+              </Link>
+            </Button>
+            <DeleteDevoteeButton devoteeId={devotee.id} />
+            <PrintFormSelectorButton devoteeId={devotee.id} />
+          </div>
         </div>
       </div>
 

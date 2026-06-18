@@ -23,13 +23,13 @@ export default async function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 py-12">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md animate-slide-up">
         <CardHeader>
           <CardTitle>Đăng nhập quản trị</CardTitle>
           <CardDescription>Ứng dụng nội bộ — chỉ dành cho ban quản trị chùa.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<p className="text-sm text-zinc-500">Loading…</p>}>
+          <Suspense fallback={<p className="text-sm text-zinc-500">Đang tải…</p>}>
             <LoginForm />
           </Suspense>
           <p className="mt-6 text-center text-xs text-zinc-500">

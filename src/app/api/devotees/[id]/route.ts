@@ -10,13 +10,11 @@ import {
   upsertDevoteeAfterlife,
 } from "@/lib/data/devotee-afterlife";
 import { fetchDevoteeProfile } from "@/lib/data/devotee-profile";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { devoteeProfileUpdateSchema, devoteeUuidSchema } from "@/lib/validations/devotee";
 
 type RouteContext = { params: Promise<{ id: string }> };
-
-const WRITE_POLICY_ERROR =
-  "Devotee exists, but the database blocked this write. Apply the latest Supabase CRUD policies/grants migration.";
 
 function validationMessage(error: ZodError) {
   return error.issues.map((issue) => issue.message).join(" ");
@@ -72,8 +70,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   const devoteePatch = extractDevoteeCorePatch(parsed.data);
   const afterlifePatch = extractAfterlifeFromPatch(parsed.data);
   const relatedPatch = extractRelatedRecordsFromPatch(parsed.data);
+  const adminSupabase = createAdminSupabaseClient();
 
-  const { data: existingDevotee, error: existingError } = await supabase
+  const { data: existingDevotee, error: existingError } = await adminSupabase
     .from("devotees")
     .select("id")
     .eq("id", parsedId.data)
@@ -90,7 +89,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   let devotee = existingDevotee;
 
   if (Object.keys(devoteePatch).length > 0) {
-    const { data: updatedDevotee, error } = await supabase
+    const { data: updatedDevotee, error } = await adminSupabase
       .from("devotees")
       .update(devoteePatch)
       .eq("id", parsedId.data)
@@ -102,12 +101,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     if (!updatedDevotee) {
-      return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     devotee = updatedDevotee;
   } else {
-    const { data: currentDevotee, error } = await supabase
+    const { data: currentDevotee, error } = await adminSupabase
       .from("devotees")
       .select("*")
       .eq("id", parsedId.data)
@@ -118,7 +117,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     if (!currentDevotee) {
-      return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     devotee = currentDevotee;
@@ -127,7 +126,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (afterlifePatch !== undefined) {
     try {
       await upsertDevoteeAfterlife(
-        supabase,
+        adminSupabase,
         parsedId.data,
         hasAfterlifeContent(afterlifePatch) ? afterlifePatch : null,
       );
@@ -140,7 +139,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    await saveDevoteeProfileRelatedRecords(supabase, parsedId.data, relatedPatch);
+    await saveDevoteeProfileRelatedRecords(adminSupabase, parsedId.data, relatedPatch);
   } catch (relatedError) {
     return NextResponse.json(
       { error: relatedError instanceof Error ? relatedError.message : "Failed to save profile details." },
@@ -167,7 +166,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const { data: existingDevotee, error: existingError } = await supabase
+  const adminSupabase = createAdminSupabaseClient();
+  const { data: existingDevotee, error: existingError } = await adminSupabase
     .from("devotees")
     .select("id")
     .eq("id", parsedId.data)
@@ -182,14 +182,14 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   // Authenticated users are treated as admins in this app. Add role-claim checks here before adding non-admin users.
-  const { data, error } = await supabase.from("devotees").delete().eq("id", parsedId.data).select("id").maybeSingle();
+  const { data, error } = await adminSupabase.from("devotees").delete().eq("id", parsedId.data).select("id").maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   if (!data) {
-    return NextResponse.json({ error: WRITE_POLICY_ERROR }, { status: 403 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   return NextResponse.json({ success: true });

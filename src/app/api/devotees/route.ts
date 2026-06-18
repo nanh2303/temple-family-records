@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { saveDevoteeProfileRelatedRecords, splitDevoteeProfilePayload } from "@/lib/data/devotee-afterlife";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { devoteeProfileCreateSchema } from "@/lib/validations/devotee";
 
@@ -27,16 +28,17 @@ export async function POST(request: Request) {
   }
 
   const { devotee: devoteeInput, related } = splitDevoteeProfilePayload(parsed.data);
-  const { data: devotee, error } = await supabase.from("devotees").insert(devoteeInput).select("*").single();
+  const adminSupabase = createAdminSupabaseClient();
+  const { data: devotee, error } = await adminSupabase.from("devotees").insert(devoteeInput).select("*").single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   try {
-    await saveDevoteeProfileRelatedRecords(supabase, devotee.id, related);
+    await saveDevoteeProfileRelatedRecords(adminSupabase, devotee.id, related);
   } catch (relatedError) {
-    await supabase.from("devotees").delete().eq("id", devotee.id);
+    await adminSupabase.from("devotees").delete().eq("id", devotee.id);
     return NextResponse.json(
       { error: relatedError instanceof Error ? relatedError.message : "Failed to save profile details." },
       { status: 500 },

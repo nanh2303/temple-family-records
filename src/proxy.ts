@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { createMiddlewareSupabaseClient } from "@/lib/supabase/middleware";
+import { createProxySupabaseClient } from "@/lib/supabase/proxy";
 
 const ADMIN_PATH_PREFIXES = ["/dashboard", "/devotees"];
 const PROTECTED_API_PREFIXES = ["/api/devotees", "/api/pdf"];
@@ -13,14 +13,14 @@ function isProtectedApi(pathname: string) {
   return PROTECTED_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!isAdminPath(pathname) && !isProtectedApi(pathname)) {
     return NextResponse.next();
   }
 
-  const { supabase, response } = createMiddlewareSupabaseClient(request);
+  const { supabase, response } = createProxySupabaseClient(request);
 
   if (!supabase) {
     if (isProtectedApi(pathname)) {

@@ -29,6 +29,11 @@ const optionalLongTextField = z.preprocess(
   z.string().max(2000, "Must be 2000 characters or fewer.").nullable().optional(),
 );
 
+const optionalUrlField = z.preprocess(
+  normalizeString,
+  z.string().url("Must be a valid URL.").nullable().optional(),
+);
+
 const optionalDateField = z.preprocess(
   normalizeString,
   z
@@ -53,7 +58,7 @@ export const devoteeCoreSchema = z.object({
   preceptor: optionalTextField,
   father_name: optionalTextField,
   mother_name: optionalTextField,
-  profile_picture_url: z.string().url("Must be a valid URL.").nullable().optional(),
+  profile_picture_url: optionalUrlField,
 });
 
 /** Section I — Hậu thế (stored in `devotee_afterlife_info`). */

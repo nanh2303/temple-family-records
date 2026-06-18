@@ -33,7 +33,7 @@ export function LoginForm() {
       router.replace(nextPath.startsWith("/") ? nextPath : "/dashboard");
       router.refresh();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Unable to sign in.");
+      setMessage(err instanceof Error ? err.message : "Không thể đăng nhập.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export function LoginForm() {
       </div>
       {message ? <p className="text-sm text-red-600">{message}</p> : null}
       <Button className="w-full" type="submit" disabled={loading}>
-        {loading ? "Signing in…" : "Sign in"}
+        {loading ? "Đang đăng nhập…" : "Đăng nhập"}
       </Button>
     </form>
   );

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FileUp, Search, UserPlus } from "lucide-react";
 
 import { DashboardSearchLaunch } from "@/components/devotees/DashboardSearchLaunch";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
@@ -11,40 +13,72 @@ export const metadata: Metadata = {
 export default function DashboardPage() {
   return (
     <div className="space-y-8">
-      <div>
+      <div className="animate-slide-down">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Bảng điều khiển</h1>
         <p className="mt-1 text-sm text-zinc-600">Tổng quan nhanh và tra cứu đạo hữu.</p>
       </div>
-      <Card>
+
+      <Card className="overflow-hidden shadow-md shadow-zinc-900/5">
+        <div className="accent-bar h-1 w-full" />
         <CardHeader>
-          <CardTitle>Tra cứu đạo hữu</CardTitle>
+          <div className="flex items-center gap-2">
+            <Search className="size-5 text-amber-700" aria-hidden />
+            <CardTitle>Tra cứu đạo hữu</CardTitle>
+          </div>
           <CardDescription>Nhập từ khóa (có thể không dấu) rồi chuyển tới trang kết quả.</CardDescription>
         </CardHeader>
         <CardContent>
           <DashboardSearchLaunch />
-          <p className="mt-3 text-sm text-zinc-600">
-            Hoặc mở trực tiếp{" "}
-            <Link href="/devotees" className="font-medium text-zinc-900 underline underline-offset-2">
-              trang Đạo hữu
-            </Link>
-            .
-          </p>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Quản lý hồ sơ</CardTitle>
-          <CardDescription>Danh sách và hồ sơ chi tiết đạo hữu.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href="/devotees"
-            className="inline-flex text-sm font-medium text-zinc-900 underline underline-offset-2 hover:text-zinc-700"
-          >
-            Mở tra cứu đạo hữu →
-          </Link>
-        </CardContent>
-      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="card-interactive group overflow-hidden">
+          <div className="accent-bar h-1 w-full opacity-60 transition-opacity group-hover:opacity-100" />
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-amber-50 p-2.5 text-amber-800 ring-1 ring-amber-200/60">
+                <UserPlus className="size-5" aria-hidden />
+              </div>
+              <div>
+                <CardTitle className="text-base">Thêm đạo hữu</CardTitle>
+                <CardDescription className="mt-1">Tạo hồ sơ đạo hữu mới.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="accent">
+              <Link href="/devotees/new">
+                <UserPlus aria-hidden />
+                Thêm đạo hữu
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="card-interactive group overflow-hidden">
+          <div className="accent-bar h-1 w-full opacity-60 transition-opacity group-hover:opacity-100" />
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-zinc-100 p-2.5 text-zinc-700 ring-1 ring-zinc-200">
+                <FileUp className="size-5" aria-hidden />
+              </div>
+              <div>
+                <CardTitle className="text-base">Nhập CSV</CardTitle>
+                <CardDescription className="mt-1">Import hàng loạt từ file CSV.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="secondary">
+              <Link href="/devotees/import">
+                <FileUp aria-hidden />
+                Nhập CSV
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

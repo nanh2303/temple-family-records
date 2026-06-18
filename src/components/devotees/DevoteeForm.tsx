@@ -1,9 +1,9 @@
 "use client";
 
-import { Plus, Save, Trash2, X, Upload, Loader2 } from "lucide-react";
+import { Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ZodIssue } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,9 @@ const DEVOTEE_FORM_FIELD_NAMES = [
   "afterlife_note",
   "profile_picture_url",
 ] as const;
+
+const PROFILE_PICTURE_MAX_FILE_SIZE = 5 * 1024 * 1024;
+const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const NOTE_SECTIONS = [
   { note_type: "achievement", title: "Thành tích cá nhân", addLabel: "Thêm thành tích" },
@@ -286,11 +289,21 @@ export function DevoteeForm(props: DevoteeFormProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [uploadPictureError, setUploadPictureError] = useState<string | null>(null);
+  const [pendingProfilePictureFile, setPendingProfilePictureFile] = useState<File | null>(null);
+  const [pendingProfilePictureObjectUrl, setPendingProfilePictureObjectUrl] = useState<string | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
     props.initialValues?.profile_picture_url || null,
   );
 
   const cancelHref = props.cancelHref ?? (props.mode === "edit" ? `/devotees/${props.devoteeId}` : "/devotees");
+
+  useEffect(() => {
+    return () => {
+      if (pendingProfilePictureObjectUrl) {
+        URL.revokeObjectURL(pendingProfilePictureObjectUrl);
+      }
+    };
+  }, [pendingProfilePictureObjectUrl]);
 
   function updateField(fieldName: DevoteeFormFieldName, value: string) {
     setValues((current) => ({ ...current, [fieldName]: value }));
@@ -316,12 +329,67 @@ export function DevoteeForm(props: DevoteeFormProps) {
     }));
   }
 
+  function validateProfilePictureFile(file: File) {
+    if (!PROFILE_PICTURE_ALLOWED_TYPES.includes(file.type)) {
+      return "Invalid file type. Only JPEG, PNG, and WebP are allowed.";
+    }
+
+    if (file.size > PROFILE_PICTURE_MAX_FILE_SIZE) {
+      return "File too large. Maximum size is 5MB.";
+    }
+
+    return null;
+  }
+
+  function queueProfilePictureForCreate(file: File) {
+    const nextObjectUrl = URL.createObjectURL(file);
+    setPendingProfilePictureObjectUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return nextObjectUrl;
+    });
+    setPendingProfilePictureFile(file);
+    setProfilePicturePreview(nextObjectUrl);
+    setValues((current) => ({ ...current, profile_picture_url: "" }));
+  }
+
+  async function uploadProfilePicture(devoteeId: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`/api/devotees/${devoteeId}/upload-picture`, {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData,
+    });
+
+    const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+
+    if (!response.ok) {
+      throw new Error(data?.error ?? `Upload failed (${response.status})`);
+    }
+
+    if (!data?.url) {
+      throw new Error("No URL returned from upload");
+    }
+
+    return data.url;
+  }
+
   async function handleProfilePictureUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (props.mode !== "edit") {
-      setUploadPictureError("You can only upload a profile picture when editing an existing devotee record.");
+    const validationError = validateProfilePictureFile(file);
+    if (validationError) {
+      setUploadPictureError(validationError);
+      event.target.value = "";
+      return;
+    }
+
+    if (props.mode === "create") {
+      setUploadPictureError(null);
+      queueProfilePictureForCreate(file);
+      event.target.value = "";
       return;
     }
 
@@ -329,29 +397,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
     setUploadPictureError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch(`/api/devotees/${props.devoteeId}/upload-picture`, {
-        method: "POST",
-        credentials: "same-origin",
-        body: formData,
-      });
-
-      const data = (await response.json().catch(() => null)) as
-        | { url?: string; error?: string }
-        | null;
-
-      if (!response.ok) {
-        throw new Error(data?.error ?? `Upload failed (${response.status})`);
-      }
-
-      if (!data?.url) {
-        throw new Error("No URL returned from upload");
-      }
-
-      setValues((current) => ({ ...current, profile_picture_url: data.url || ""}));
-      setProfilePicturePreview(data.url);
+      const url = await uploadProfilePicture(props.devoteeId, file);
+      setValues((current) => ({ ...current, profile_picture_url: url }));
+      setProfilePicturePreview(url);
     } catch (error) {
       setUploadPictureError(error instanceof Error ? error.message : "Failed to upload profile picture");
     } finally {
@@ -362,7 +410,17 @@ export function DevoteeForm(props: DevoteeFormProps) {
   }
 
   async function handleRemoveProfilePicture() {
-    if (props.mode !== "edit") return;
+    if (props.mode === "create") {
+      if (pendingProfilePictureObjectUrl) {
+        URL.revokeObjectURL(pendingProfilePictureObjectUrl);
+      }
+      setPendingProfilePictureObjectUrl(null);
+      setPendingProfilePictureFile(null);
+      setProfilePicturePreview(null);
+      setUploadPictureError(null);
+      setValues((current) => ({ ...current, profile_picture_url: "" }));
+      return;
+    }
 
     setUploadingPicture(true);
     setUploadPictureError(null);
@@ -407,6 +465,12 @@ export function DevoteeForm(props: DevoteeFormProps) {
       setErrors(fieldErrors);
       setMessage(formError);
       setLoading(false);
+      requestAnimationFrame(() => {
+        const firstInvalid = document.querySelector("[aria-invalid='true']");
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
       return;
     }
 
@@ -732,7 +796,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-zinc-200/80 glass-panel px-4 py-4 shadow-lg shadow-zinc-900/5 sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md">
         <Button asChild type="button" variant="outline">
           <Link href={cancelHref}>
             <X aria-hidden />

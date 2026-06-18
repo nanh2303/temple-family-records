@@ -50,12 +50,16 @@ export type MauGiaPhaImageAnchor = {
   height: number;
 };
 
+/**
+ * Profile photo box on PHẦN LÝ LỊCH — right column (measured from template constructPath).
+ * Rectangle corners: (482.4, 635.76) → (540, 707.76) in PDF user space.
+ */
 export const MAU_GIA_PHA_PROFILE_PICTURE_ANCHOR: MauGiaPhaImageAnchor = {
   pageIndex: 0,
-  x: 80,
-  y: 600,
-  width: 100,
-  height: 120,
+  x: 482.4,
+  y: 635.76,
+  width: 57.6,
+  height: 72,
 };
 
 export const MAU_GIA_PHA_STAMP_ANCHORS: Record<MauGiaPhaFieldKey, MauGiaPhaStampAnchor> = {

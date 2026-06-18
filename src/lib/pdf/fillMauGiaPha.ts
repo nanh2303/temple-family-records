@@ -9,6 +9,8 @@ import {
 } from "@/lib/devotees/profile-sections";
 import type { DevoteeProfileBundle } from "@/types/devotee";
 
+import { drawProfilePictureCover } from "./drawProfilePicture";
+import { describeImageFormat, embedProfilePictureImage } from "./embedProfilePicture";
 import { fitSingleLineText } from "./fitPdfText";
 import { collectPdfStampText, preparePdfText } from "./preparePdfText";
 import {
@@ -219,33 +221,22 @@ export async function fillMauGiaPhaPdf(profile: DevoteeProfileBundle): Promise<U
     // Embed profile picture if available
     if (devotee.profile_picture_url) {
       const imageBytes = await fetchImageBytes(devotee.profile_picture_url);
-      if (imageBytes) {
+      if (!imageBytes) {
+        console.warn("Profile picture skipped: failed to fetch", devotee.profile_picture_url);
+      } else {
         try {
           const anchor = MAU_GIA_PHA_PROFILE_PICTURE_ANCHOR;
           const page = pages[anchor.pageIndex];
           if (page) {
-            let image;
-            // Detect image type and embed accordingly
-            if (imageBytes[0] === 0xff && imageBytes[1] === 0xd8) {
-              // JPEG
-              image = await pdf.embedJpg(imageBytes);
-            } else if (
-              imageBytes[0] === 0x89 &&
-              imageBytes[1] === 0x50 &&
-              imageBytes[2] === 0x4e &&
-              imageBytes[3] === 0x47
-            ) {
-              // PNG
-              image = await pdf.embedPng(imageBytes);
-            }
-
-            if (image) {
-              page.drawImage(image, {
-                x: anchor.x,
-                y: anchor.y,
-                width: anchor.width,
-                height: anchor.height,
-              });
+            const embedded = await embedProfilePictureImage(pdf, imageBytes);
+            if (!embedded) {
+              console.warn(
+                "Profile picture skipped: unsupported image format",
+                describeImageFormat(imageBytes),
+                devotee.profile_picture_url,
+              );
+            } else {
+              drawProfilePictureCover({ page, image: embedded.image, anchor });
             }
           }
         } catch (imageError) {
