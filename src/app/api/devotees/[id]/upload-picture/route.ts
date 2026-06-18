@@ -29,8 +29,13 @@ async function ensureProfilePictureBucket(supabase: AdminSupabaseClient) {
     return;
   }
 
-  if (error && !error.message.toLowerCase().includes("not found")) {
-    throw new Error(error.message);
+  // error may not have a typed 'message' property; guard safely
+  if (
+    error &&
+    typeof (error as any).message === "string" &&
+    !( (error as any).message as string).toLowerCase().includes("not found")
+  ) {
+    throw new Error((error as any).message);
   }
 
   if (!bucket.public) {
