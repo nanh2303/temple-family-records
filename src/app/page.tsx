@@ -21,10 +21,9 @@ export default async function HomePage() {
 
   return (
     <div className="app-gradient-bg flex min-h-screen flex-col items-center justify-center px-6 py-16 text-center">
-      <Card className="max-w-lg animate-scale-in overflow-hidden shadow-xl shadow-stone-900/10">
-        <div className="accent-bar h-1 w-full" />
+      <Card className="max-w-lg animate-scale-in overflow-hidden border-[#cfc3ad]">
         <CardHeader className="pb-4">
-          <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-lg bg-accent ring-1 ring-amber-200/70">
+          <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-md bg-primary text-[#ead7ad]">
             <BookOpen className="size-7 text-accent-foreground" aria-hidden />
           </div>
           <CardTitle className="text-2xl">Hồ sơ nhà chùa</CardTitle>

@@ -86,30 +86,29 @@ export default async function DevoteeProfilePage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6">
-      <div className="glass-panel sticky top-14 z-10 -mx-4 rounded-none border-b border-border/90 px-4 py-4 shadow-sm sm:-mx-0 sm:rounded-lg sm:border sm:shadow-md sm:shadow-stone-900/5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="animate-slide-down">
-            <h1 className="text-2xl font-semibold text-foreground">{devotee.full_name}</h1>
-            {devotee.dharma_name ? (
-              <p className="mt-1 text-sm font-medium text-accent-foreground">Pháp danh: {devotee.dharma_name}</p>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-start gap-2">
-            <Button asChild variant="outline">
-              <Link href="/devotees">
-                <ArrowLeft aria-hidden />
-                Quay lại
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href={`/devotees/${devotee.id}/edit`}>
-                <Pencil aria-hidden />
-                Chỉnh sửa
-              </Link>
-            </Button>
-            <DeleteDevoteeButton devoteeId={devotee.id} />
-            <PrintFormSelectorButton devoteeId={devotee.id} />
-          </div>
+      <div className="flex flex-col gap-5 border-b border-border/80 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="animate-slide-down">
+          <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-primary">Hồ sơ đạo hữu</p>
+          <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">{devotee.full_name}</h1>
+          {devotee.dharma_name ? (
+            <p className="mt-1 text-sm font-medium text-accent-foreground">Pháp danh: {devotee.dharma_name}</p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-start gap-2">
+          <Button asChild variant="outline">
+            <Link href="/devotees">
+              <ArrowLeft aria-hidden />
+              Quay lại
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/devotees/${devotee.id}/edit`}>
+              <Pencil aria-hidden />
+              Chỉnh sửa
+            </Link>
+          </Button>
+          <DeleteDevoteeButton devoteeId={devotee.id} />
+          <PrintFormSelectorButton devoteeId={devotee.id} />
         </div>
       </div>
 

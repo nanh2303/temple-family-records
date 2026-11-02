@@ -63,11 +63,12 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
 
   return (
     <div className="space-y-6">
-      <div className="animate-slide-down flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="animate-slide-down flex flex-col gap-5 border-b border-border/80 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Tra cứu đạo hữu</h1>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Tìm theo mảnh thông tin: tên, pháp danh, quê quán, địa chỉ — hỗ trợ không dấu và dấu sai lệch nhẹ.
+          <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-primary">Sổ gia đình Phật tử</p>
+          <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Tra cứu đạo hữu</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Tìm theo họ tên, pháp danh, quê quán và các thông tin trong hồ sơ.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -86,9 +87,8 @@ export function DevoteesSearchPageClient({ initialQuery = "" }: DevoteesSearchPa
         </div>
       </div>
 
-      <Card className="sticky top-[4.125rem] z-20 overflow-hidden shadow-md shadow-stone-900/5">
-        <div className="accent-bar h-1 w-full" />
-        <CardContent className="p-6">
+      <Card className="border-[#cfc3ad]">
+        <CardContent className="p-4 sm:p-5">
           <DevoteeSearchBox value={query} onChange={setQuery} loading={loading} />
         </CardContent>
       </Card>

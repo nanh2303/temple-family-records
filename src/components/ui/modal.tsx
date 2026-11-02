@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, description, children, className }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/55 px-4 py-6 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#24221d]/55 px-4 py-6 animate-fade-in"
       onMouseDown={onClose}
     >
       <div
@@ -43,12 +43,11 @@ export function Modal({ open, onClose, title, description, children, className }
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "animate-scale-in w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-2xl shadow-stone-900/20",
+          "animate-scale-in w-full max-w-lg overflow-hidden rounded-md border border-border bg-card shadow-xl shadow-stone-900/15",
           className,
         )}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="accent-bar h-1 w-full" />
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>

@@ -5,16 +5,16 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-55 active:scale-[0.98] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-55 active:translate-y-px [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm shadow-stone-900/10 hover:bg-amber-700 hover:shadow-md",
-        secondary: "bg-secondary text-secondary-foreground ring-1 ring-border hover:bg-stone-200/70",
-        outline: "border border-border bg-card text-foreground shadow-sm shadow-stone-900/5 hover:border-stone-300 hover:bg-stone-50",
-        ghost: "text-stone-700 hover:bg-stone-100 hover:text-stone-950",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-[#702b25]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-[#d9dfd5]",
+        outline: "border border-border bg-card text-foreground hover:border-[#b9aa93] hover:bg-[#f7f3ea]",
+        ghost: "text-stone-700 hover:bg-[#eee9de] hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        accent: "bg-primary text-primary-foreground shadow-sm shadow-amber-900/20 hover:bg-amber-700 hover:shadow-md",
+        accent: "bg-primary text-primary-foreground shadow-sm hover:bg-[#702b25]",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm shadow-red-900/15 hover:bg-red-700 hover:shadow-md focus-visible:ring-red-600/45",
       },

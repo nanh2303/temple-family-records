@@ -7,6 +7,9 @@ This folder holds SQL migrations and seed data for the `temple-family-records` p
 - `migrations/0001_initial_schema.sql` - extensions (`unaccent`, `pg_trgm`), core tables, indexes, `search_devotees` RPC, and RLS policies for `authenticated` read access.
 - `migrations/0002_devotee_crud_policies.sql` - RLS write policies for the admin-only CRUD workflow.
 - `migrations/0003_devotee_crud_policy_grants.sql` - Idempotent CRUD policy/grant repair for existing databases.
+- `migrations/0008_add_current_unit_and_study_level.sql` - Adds fixed-choice current unit and study level fields, defaulting existing and new records to `Không có`.
+- `migrations/0009_prioritize_devotee_search.sql` - Ranks full-name matches before Dharma name, hometown, and the remaining searchable fields.
+- `migrations/0010_prioritize_exact_name_tokens_and_expand_results.sql` - Puts exact full-name word/phrase matches ahead of partial matches and returns up to 30 devotees.
 - `seed.sql` - optional sample devotees for development and demos.
 
 ## Apply migrations

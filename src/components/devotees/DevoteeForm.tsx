@@ -18,6 +18,7 @@ import {
   type DevoteeTrainingCategory,
   type DevoteeTrainingRecordKey,
 } from "@/lib/devotees/profile-sections";
+import { DEVOTEE_CURRENT_STUDY_LEVEL_OPTIONS, DEVOTEE_CURRENT_UNIT_OPTIONS } from "@/lib/devotees/current-options";
 import {
   devoteeProfileCreateSchema,
   devoteeProfileUpdateSchema,
@@ -48,6 +49,8 @@ const DEVOTEE_FORM_FIELD_NAMES = [
   "preceptor",
   "father_name",
   "mother_name",
+  "current_unit_status",
+  "current_study_level",
   "death_date",
   "grave_location",
   "afterlife_note",
@@ -110,7 +113,8 @@ type DevoteeFormProps =
 type FieldConfig = {
   name: DevoteeFormFieldName;
   label: string;
-  type?: "date" | "text";
+  type?: "date" | "text" | "select";
+  options?: readonly string[];
   required?: boolean;
 };
 
@@ -144,6 +148,8 @@ const FORM_SECTIONS: { title: string; description?: string; fields: FieldConfig[
       { name: "vow_date", label: "Ngày Phát nguyện", type: "date" },
       { name: "refuge_date", label: "Ngày Quy y", type: "date" },
       { name: "preceptor", label: "Bổn Sư truyền giới" },
+      { name: "current_unit_status", label: "Đang Sinh Hoạt", type: "select", options: DEVOTEE_CURRENT_UNIT_OPTIONS },
+      { name: "current_study_level", label: "Đang Học Bậc", type: "select", options: DEVOTEE_CURRENT_STUDY_LEVEL_OPTIONS },
     ],
   },
   {
@@ -172,6 +178,10 @@ function buildInitialValues(initialValues?: DevoteeFormInitialValues): DevoteeFo
     }
     if (fieldName === "profile_picture_url") {
       values[fieldName] = initialValues?.profile_picture_url ?? "";
+      return values;
+    }
+    if (fieldName === "current_unit_status" || fieldName === "current_study_level") {
+      values[fieldName] = initialValues?.[fieldName] ?? "Không có";
       return values;
     }
     values[fieldName] = (initialValues?.[fieldName as keyof DevoteeFormInitialValues] as string | null | undefined) ?? "";
@@ -289,7 +299,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [uploadPictureError, setUploadPictureError] = useState<string | null>(null);
+  const [pendingProfilePictureFile, setPendingProfilePictureFile] = useState<File | null>(null);
   const [pendingProfilePictureObjectUrl, setPendingProfilePictureObjectUrl] = useState<string | null>(null);
+  const [createdDevoteeId, setCreatedDevoteeId] = useState<string | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
     props.initialValues?.profile_picture_url || null,
   );
@@ -347,6 +359,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
       return nextObjectUrl;
     });
     setProfilePicturePreview(nextObjectUrl);
+    setPendingProfilePictureFile(file);
     setValues((current) => ({ ...current, profile_picture_url: "" }));
   }
 
@@ -413,6 +426,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
         URL.revokeObjectURL(pendingProfilePictureObjectUrl);
       }
       setPendingProfilePictureObjectUrl(null);
+      setPendingProfilePictureFile(null);
       setProfilePicturePreview(null);
       setUploadPictureError(null);
       setValues((current) => ({ ...current, profile_picture_url: "" }));
@@ -471,8 +485,10 @@ export function DevoteeForm(props: DevoteeFormProps) {
       return;
     }
 
-    const endpoint = props.mode === "create" ? "/api/devotees" : `/api/devotees/${props.devoteeId}`;
-    const method = props.mode === "create" ? "POST" : "PATCH";
+    const existingId = props.mode === "edit" ? props.devoteeId : createdDevoteeId;
+    const isNewDevotee = props.mode === "create" && !createdDevoteeId;
+    const endpoint = isNewDevotee ? "/api/devotees" : `/api/devotees/${existingId}`;
+    const method = isNewDevotee ? "POST" : "PATCH";
 
     try {
       const response = await fetch(endpoint, {
@@ -487,9 +503,29 @@ export function DevoteeForm(props: DevoteeFormProps) {
         throw new Error(body?.error ?? `Request failed (${response.status})`);
       }
 
-      const nextId = props.mode === "create" ? body?.id : props.devoteeId;
+      const nextId = isNewDevotee ? body?.id : existingId;
       if (!nextId) {
         throw new Error("Không xác định được hồ sơ vừa lưu.");
+      }
+
+      if (isNewDevotee) {
+        setCreatedDevoteeId(nextId);
+      }
+
+      if (props.mode === "create" && pendingProfilePictureFile) {
+        try {
+          const url = await uploadProfilePicture(nextId, pendingProfilePictureFile);
+          setValues((current) => ({ ...current, profile_picture_url: url }));
+          setProfilePicturePreview(url);
+          setPendingProfilePictureFile(null);
+          setPendingProfilePictureObjectUrl((current) => {
+            if (current) URL.revokeObjectURL(current);
+            return null;
+          });
+        } catch (uploadError) {
+          const reason = uploadError instanceof Error ? uploadError.message : "Failed to upload profile picture";
+          throw new Error(`Hồ sơ đã được lưu, nhưng tải ảnh thất bại: ${reason}. Bấm Lưu lại để thử lại.`);
+        }
       }
 
       router.push(`/devotees/${nextId}`);
@@ -514,7 +550,6 @@ export function DevoteeForm(props: DevoteeFormProps) {
         if (section.title === "Ảnh đại diện") {
           return (
             <Card key={section.title} className="overflow-hidden">
-              <div className="accent-bar h-0.5 w-full opacity-70" />
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
               </CardHeader>
@@ -542,11 +577,11 @@ export function DevoteeForm(props: DevoteeFormProps) {
                         id="profile-picture-input"
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
-                        disabled={uploadingPicture || props.mode === "create"}
+                        disabled={uploadingPicture || loading}
                         onChange={handleProfilePictureUpload}
                       />
                       <p className="text-xs leading-5 text-muted-foreground">
-                        Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB. {props.mode === "create" ? "Vui lòng lưu hồ sơ trước khi tải ảnh." : ""}
+                        Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB.
                       </p>
                     </div>
                     {profilePicturePreview ? (
@@ -589,16 +624,34 @@ export function DevoteeForm(props: DevoteeFormProps) {
                     }
                   >
                     <Label htmlFor={inputId}>{field.label}</Label>
-                    <Input
-                      id={inputId}
-                      name={field.name}
-                      type={field.type ?? "text"}
-                      required={field.required}
-                      value={values[field.name]}
-                      aria-invalid={error ? "true" : "false"}
-                      aria-describedby={error ? `${inputId}-error` : undefined}
-                      onChange={(event) => updateField(field.name, event.target.value)}
-                    />
+                    {field.type === "select" ? (
+                      <select
+                        id={inputId}
+                        name={field.name}
+                        value={values[field.name]}
+                        aria-invalid={error ? "true" : "false"}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                        className="flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground shadow-sm shadow-stone-900/5 transition-all duration-200 hover:border-stone-300 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:bg-red-50/60 aria-invalid:ring-2 aria-invalid:ring-red-600/15"
+                        onChange={(event) => updateField(field.name, event.target.value)}
+                      >
+                        {(field.options ?? []).map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        id={inputId}
+                        name={field.name}
+                        type={field.type ?? "text"}
+                        required={field.required}
+                        value={values[field.name]}
+                        aria-invalid={error ? "true" : "false"}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                        onChange={(event) => updateField(field.name, event.target.value)}
+                      />
+                    )}
                     {error ? (
                       <p id={`${inputId}-error`} className="text-xs font-medium text-red-600">
                         {error}
@@ -794,7 +847,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-border/90 glass-panel px-4 py-4 shadow-lg shadow-stone-900/5 sm:-mx-0 sm:rounded-lg sm:border sm:shadow-md">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-border bg-[#f3efe6]/95 px-4 py-4 sm:-mx-0 sm:rounded-md sm:border sm:bg-[#f3efe6]/85">
         <Button asChild type="button" variant="outline">
           <Link href={cancelHref}>
             <X aria-hidden />

@@ -1,3 +1,5 @@
+import type { DevoteeCurrentStudyLevel, DevoteeCurrentUnit } from "@/lib/devotees/current-options";
+
 export type DevoteeSearchRow = {
   id: string;
   family_registry_no: string | null;
@@ -32,6 +34,8 @@ export type DevoteeRecord = {
   preceptor: string | null;
   father_name: string | null;
   mother_name: string | null;
+  current_unit_status: DevoteeCurrentUnit;
+  current_study_level: DevoteeCurrentStudyLevel;
   profile_picture_url: string | null;
   search_text: string;
   created_at: string;

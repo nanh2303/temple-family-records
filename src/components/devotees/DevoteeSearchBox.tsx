@@ -42,7 +42,7 @@ export function DevoteeSearchBox({ value, onChange, className, disabled, loading
         />
         {loading ? (
           <span
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-amber-700"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-primary"
             role="status"
           >
             Đang tìm…
