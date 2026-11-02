@@ -63,6 +63,8 @@ export function profileBasics(devotee: DevoteeRecord, afterlife?: DevoteeAfterli
       <ProfileField label="Bổn Sư truyền giới" value={devotee.preceptor} />
       <ProfileField label="Tên Cha" value={devotee.father_name} />
       <ProfileField label="Tên Mẹ" value={devotee.mother_name} />
+      <ProfileField label="Đang Sinh Hoạt" value={devotee.current_unit_status} />
+      <ProfileField label="Đang Học Bậc" value={devotee.current_study_level} />
       <ProfileField label="Tạ thế ngày" value={afterlife?.death_date} />
       <ProfileField label="Mộ chí tại" value={afterlife?.grave_location} />
     </>

@@ -18,6 +18,7 @@ import {
   type DevoteeTrainingCategory,
   type DevoteeTrainingRecordKey,
 } from "@/lib/devotees/profile-sections";
+import { DEVOTEE_CURRENT_STUDY_LEVEL_OPTIONS, DEVOTEE_CURRENT_UNIT_OPTIONS } from "@/lib/devotees/current-options";
 import {
   devoteeProfileCreateSchema,
   devoteeProfileUpdateSchema,
@@ -48,6 +49,8 @@ const DEVOTEE_FORM_FIELD_NAMES = [
   "preceptor",
   "father_name",
   "mother_name",
+  "current_unit_status",
+  "current_study_level",
   "death_date",
   "grave_location",
   "afterlife_note",
@@ -110,7 +113,8 @@ type DevoteeFormProps =
 type FieldConfig = {
   name: DevoteeFormFieldName;
   label: string;
-  type?: "date" | "text";
+  type?: "date" | "text" | "select";
+  options?: readonly string[];
   required?: boolean;
 };
 
@@ -144,6 +148,8 @@ const FORM_SECTIONS: { title: string; description?: string; fields: FieldConfig[
       { name: "vow_date", label: "Ngày Phát nguyện", type: "date" },
       { name: "refuge_date", label: "Ngày Quy y", type: "date" },
       { name: "preceptor", label: "Bổn Sư truyền giới" },
+      { name: "current_unit_status", label: "Đang Sinh Hoạt", type: "select", options: DEVOTEE_CURRENT_UNIT_OPTIONS },
+      { name: "current_study_level", label: "Đang Học Bậc", type: "select", options: DEVOTEE_CURRENT_STUDY_LEVEL_OPTIONS },
     ],
   },
   {
@@ -172,6 +178,10 @@ function buildInitialValues(initialValues?: DevoteeFormInitialValues): DevoteeFo
     }
     if (fieldName === "profile_picture_url") {
       values[fieldName] = initialValues?.profile_picture_url ?? "";
+      return values;
+    }
+    if (fieldName === "current_unit_status" || fieldName === "current_study_level") {
+      values[fieldName] = initialValues?.[fieldName] ?? "Không có";
       return values;
     }
     values[fieldName] = (initialValues?.[fieldName as keyof DevoteeFormInitialValues] as string | null | undefined) ?? "";
@@ -615,16 +625,34 @@ export function DevoteeForm(props: DevoteeFormProps) {
                     }
                   >
                     <Label htmlFor={inputId}>{field.label}</Label>
-                    <Input
-                      id={inputId}
-                      name={field.name}
-                      type={field.type ?? "text"}
-                      required={field.required}
-                      value={values[field.name]}
-                      aria-invalid={error ? "true" : "false"}
-                      aria-describedby={error ? `${inputId}-error` : undefined}
-                      onChange={(event) => updateField(field.name, event.target.value)}
-                    />
+                    {field.type === "select" ? (
+                      <select
+                        id={inputId}
+                        name={field.name}
+                        value={values[field.name]}
+                        aria-invalid={error ? "true" : "false"}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                        className="flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground shadow-sm shadow-stone-900/5 transition-all duration-200 hover:border-stone-300 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:bg-red-50/60 aria-invalid:ring-2 aria-invalid:ring-red-600/15"
+                        onChange={(event) => updateField(field.name, event.target.value)}
+                      >
+                        {(field.options ?? []).map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        id={inputId}
+                        name={field.name}
+                        type={field.type ?? "text"}
+                        required={field.required}
+                        value={values[field.name]}
+                        aria-invalid={error ? "true" : "false"}
+                        aria-describedby={error ? `${inputId}-error` : undefined}
+                        onChange={(event) => updateField(field.name, event.target.value)}
+                      />
+                    )}
                     {error ? (
                       <p id={`${inputId}-error`} className="text-xs font-medium text-red-600">
                         {error}

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DEVOTEE_TRAINING_RECORD_KEYS } from "@/lib/devotees/profile-sections";
+import { DEVOTEE_CURRENT_STUDY_LEVEL_OPTIONS, DEVOTEE_CURRENT_UNIT_OPTIONS } from "@/lib/devotees/current-options";
 
 export const devoteeUuidSchema = z.string().uuid();
 
@@ -58,6 +59,8 @@ export const devoteeCoreSchema = z.object({
   preceptor: optionalTextField,
   father_name: optionalTextField,
   mother_name: optionalTextField,
+  current_unit_status: z.enum(DEVOTEE_CURRENT_UNIT_OPTIONS).default("Không có"),
+  current_study_level: z.enum(DEVOTEE_CURRENT_STUDY_LEVEL_OPTIONS).default("Không có"),
   profile_picture_url: optionalUrlField,
 });
 
