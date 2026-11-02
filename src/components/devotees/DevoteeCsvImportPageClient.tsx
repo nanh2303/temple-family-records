@@ -43,8 +43,8 @@ type ImportResponse = DevoteeCsvImportPreview & {
 
 function statusClassName(status: DevoteeCsvImportRow["status"]) {
   if (status === "error") return "bg-red-50 text-red-700 ring-red-200";
-  if (status === "warning") return "bg-amber-50 text-amber-700 ring-amber-200";
-  return "bg-lime-50 text-lime-700 ring-lime-200";
+  if (status === "warning") return "bg-[#f2e8d2] text-[#70552b] ring-[#e2d2b2]";
+  return "bg-[#e5e9df] text-[#405a46] ring-[#cbd5c8]";
 }
 
 function formatDelimiter(delimiter?: string) {
@@ -154,7 +154,7 @@ export function DevoteeCsvImportPageClient() {
               }}
             />
           </div>
-          <div className="sticky top-[4.125rem] z-10 -mx-5 flex flex-wrap gap-2 border-y border-border bg-card/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="sticky top-[4.125rem] z-10 -mx-5 flex flex-wrap gap-2 border-y border-border bg-[#f7f3ea] px-5 py-3 sm:-mx-6 sm:px-6">
             <Button
               type="button"
               disabled={!file || Boolean(loadingAction)}
@@ -179,7 +179,7 @@ export function DevoteeCsvImportPageClient() {
           </div>
           {message ? (
             <p
-              className="rounded-md border border-border bg-stone-50 px-4 py-3 text-sm text-stone-700"
+                  className="rounded-md border border-border bg-[#f7f3ea] px-4 py-3 text-sm text-foreground"
               role="status"
             >
               {message}
@@ -229,7 +229,7 @@ export function DevoteeCsvImportPageClient() {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">Có thể import</p>
-                <p className="mt-1 text-2xl font-semibold text-lime-700">
+                <p className="mt-1 text-2xl font-semibold text-success">
                   {result.summary.importableRows}
                 </p>
               </CardContent>
@@ -237,7 +237,7 @@ export function DevoteeCsvImportPageClient() {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">Cảnh báo</p>
-                <p className="mt-1 text-2xl font-semibold text-amber-700">
+                <p className="mt-1 text-2xl font-semibold text-accent-foreground">
                   {result.summary.warningRows}
                 </p>
               </CardContent>
@@ -274,7 +274,7 @@ export function DevoteeCsvImportPageClient() {
                   </ul>
                 </div>
               ) : (
-                <div className="rounded-md border border-lime-200 bg-lime-50 p-4 text-sm text-lime-700">
+                <div className="rounded-md border border-[#cbd5c8] bg-[#eaf0e8] p-4 text-sm text-[#405a46]">
                   <div className="flex items-center gap-2 font-medium">
                     <CheckCircle2 aria-hidden className="size-4" />
                     Header đọc được. Các dòng không lỗi có thể import.
@@ -283,7 +283,7 @@ export function DevoteeCsvImportPageClient() {
               )}
 
               {result.unmappedHeaders.length > 0 ? (
-                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                <p className="rounded-md border border-[#e2d2b2] bg-[#f7f0e2] p-3 text-sm text-[#70552b]">
                   Các cột chưa map và sẽ bị bỏ qua:{" "}
                   {result.unmappedHeaders.join(", ")}.
                 </p>

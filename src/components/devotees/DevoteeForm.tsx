@@ -550,7 +550,6 @@ export function DevoteeForm(props: DevoteeFormProps) {
         if (section.title === "Ảnh đại diện") {
           return (
             <Card key={section.title} className="overflow-hidden">
-              <div className="accent-bar h-0.5 w-full opacity-70" />
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
               </CardHeader>
@@ -848,7 +847,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-border/90 glass-panel px-4 py-4 shadow-lg shadow-stone-900/5 sm:-mx-0 sm:rounded-lg sm:border sm:shadow-md">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-border bg-[#f3efe6]/95 px-4 py-4 sm:-mx-0 sm:rounded-md sm:border sm:bg-[#f3efe6]/85">
         <Button asChild type="button" variant="outline">
           <Link href={cancelHref}>
             <X aria-hidden />

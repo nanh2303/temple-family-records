@@ -23,10 +23,10 @@ export default async function LoginPage() {
 
   return (
     <div className="app-gradient-bg flex min-h-screen flex-col items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md animate-slide-up">
-        <div className="accent-bar h-1 w-full" />
-        <CardHeader>
-          <CardTitle>Đăng nhập quản trị</CardTitle>
+      <Card className="w-full max-w-md animate-slide-up border-[#cfc3ad]">
+        <CardHeader className="text-center">
+          <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-primary">Hồ sơ nhà chùa</p>
+          <CardTitle className="text-2xl">Đăng nhập quản trị</CardTitle>
           <CardDescription>Ứng dụng nội bộ — chỉ dành cho ban quản trị chùa.</CardDescription>
         </CardHeader>
         <CardContent>
