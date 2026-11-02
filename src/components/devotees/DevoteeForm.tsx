@@ -289,7 +289,9 @@ export function DevoteeForm(props: DevoteeFormProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [uploadPictureError, setUploadPictureError] = useState<string | null>(null);
+  const [pendingProfilePictureFile, setPendingProfilePictureFile] = useState<File | null>(null);
   const [pendingProfilePictureObjectUrl, setPendingProfilePictureObjectUrl] = useState<string | null>(null);
+  const [createdDevoteeId, setCreatedDevoteeId] = useState<string | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
     props.initialValues?.profile_picture_url || null,
   );
@@ -347,6 +349,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
       return nextObjectUrl;
     });
     setProfilePicturePreview(nextObjectUrl);
+    setPendingProfilePictureFile(file);
     setValues((current) => ({ ...current, profile_picture_url: "" }));
   }
 
@@ -413,6 +416,7 @@ export function DevoteeForm(props: DevoteeFormProps) {
         URL.revokeObjectURL(pendingProfilePictureObjectUrl);
       }
       setPendingProfilePictureObjectUrl(null);
+      setPendingProfilePictureFile(null);
       setProfilePicturePreview(null);
       setUploadPictureError(null);
       setValues((current) => ({ ...current, profile_picture_url: "" }));
@@ -471,8 +475,10 @@ export function DevoteeForm(props: DevoteeFormProps) {
       return;
     }
 
-    const endpoint = props.mode === "create" ? "/api/devotees" : `/api/devotees/${props.devoteeId}`;
-    const method = props.mode === "create" ? "POST" : "PATCH";
+    const existingId = props.mode === "edit" ? props.devoteeId : createdDevoteeId;
+    const isNewDevotee = props.mode === "create" && !createdDevoteeId;
+    const endpoint = isNewDevotee ? "/api/devotees" : `/api/devotees/${existingId}`;
+    const method = isNewDevotee ? "POST" : "PATCH";
 
     try {
       const response = await fetch(endpoint, {
@@ -487,9 +493,29 @@ export function DevoteeForm(props: DevoteeFormProps) {
         throw new Error(body?.error ?? `Request failed (${response.status})`);
       }
 
-      const nextId = props.mode === "create" ? body?.id : props.devoteeId;
+      const nextId = isNewDevotee ? body?.id : existingId;
       if (!nextId) {
         throw new Error("Không xác định được hồ sơ vừa lưu.");
+      }
+
+      if (isNewDevotee) {
+        setCreatedDevoteeId(nextId);
+      }
+
+      if (props.mode === "create" && pendingProfilePictureFile) {
+        try {
+          const url = await uploadProfilePicture(nextId, pendingProfilePictureFile);
+          setValues((current) => ({ ...current, profile_picture_url: url }));
+          setProfilePicturePreview(url);
+          setPendingProfilePictureFile(null);
+          setPendingProfilePictureObjectUrl((current) => {
+            if (current) URL.revokeObjectURL(current);
+            return null;
+          });
+        } catch (uploadError) {
+          const reason = uploadError instanceof Error ? uploadError.message : "Failed to upload profile picture";
+          throw new Error(`Hồ sơ đã được lưu, nhưng tải ảnh thất bại: ${reason}. Bấm Lưu lại để thử lại.`);
+        }
       }
 
       router.push(`/devotees/${nextId}`);
@@ -542,11 +568,11 @@ export function DevoteeForm(props: DevoteeFormProps) {
                         id="profile-picture-input"
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
-                        disabled={uploadingPicture || props.mode === "create"}
+                        disabled={uploadingPicture || loading}
                         onChange={handleProfilePictureUpload}
                       />
                       <p className="text-xs leading-5 text-muted-foreground">
-                        Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB. {props.mode === "create" ? "Vui lòng lưu hồ sơ trước khi tải ảnh." : ""}
+                        Hỗ trợ JPEG, PNG, WebP. Tối đa 5MB.
                       </p>
                     </div>
                     {profilePicturePreview ? (
