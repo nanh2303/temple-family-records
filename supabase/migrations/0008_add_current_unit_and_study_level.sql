@@ -8,6 +8,6 @@ ALTER TABLE public.devotees
     CHECK (current_study_level IN (
       'SENNON', 'MỞ MẮT', 'CÁNH MỀM', 'CHÂN CỨNG', 'TUNG BAY',
       'HƯỚNG THIỆN', 'SƠ THIỆN', 'TRUNG THIỆN', 'CHÁNH THIỆN',
-      'HÒA 1', 'HÒA 2', 'TRỰC', 'KIÊN', 'TRÌ', 'ĐỊNH LỰC',
+      'HÒA 1', 'HÒA 2', 'TRỰC', 'KIÊN', 'TRÌ', 'ĐỊNH', 'LỰC',
       'HOÀN TẤT', 'Không có'
     ));

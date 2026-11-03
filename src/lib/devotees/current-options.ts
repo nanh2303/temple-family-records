@@ -26,7 +26,8 @@ export const DEVOTEE_CURRENT_STUDY_LEVEL_OPTIONS = [
   "TRỰC",
   "KIÊN",
   "TRÌ",
-  "ĐỊNH LỰC",
+  "ĐỊNH",
+  "LỰC",
   "HOÀN TẤT",
   "Không có",
 ] as const;
