@@ -71,7 +71,10 @@ export async function parseDevoteeExcel(
   buffer: ArrayBuffer,
 ): Promise<DevoteeCsvImportPreview> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(buffer));
+  const workbookBuffer = Buffer.from(buffer);
+  await workbook.xlsx.load(
+    workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0],
+  );
 
   const sourceRows: SheetRowSource[] = [];
   const headers = new Set<DevoteeCsvField>();
