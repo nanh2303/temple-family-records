@@ -57,7 +57,8 @@ function formatDelimiter(delimiter?: string) {
 
 function RowMessages({ row }: { row: DevoteeCsvImportRow }) {
   const messages = [...row.errors, ...row.warnings];
-  if (messages.length === 0) return <span className="text-muted-foreground">-</span>;
+  if (messages.length === 0)
+    return <span className="text-muted-foreground">-</span>;
   return (
     <ul className="space-y-1">
       {messages.map((message) => (
@@ -81,7 +82,7 @@ export function DevoteeCsvImportPageClient() {
 
   async function submitCsv(action: "preview" | "commit") {
     if (!file) {
-      setMessage("Hãy chọn một file CSV trước.");
+      setMessage("Hãy chọn một file CSV hoặc Excel trước.");
       return;
     }
 
@@ -107,7 +108,7 @@ export function DevoteeCsvImportPageClient() {
         setMessage(`Đã import ${body?.insertedCount ?? 0} hồ sơ vào database.`);
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Không thể xử lý file CSV.",
+        error instanceof Error ? error.message : "Không thể xử lý file.",
       );
       if (action === "commit") setResult(null);
     } finally {
@@ -120,11 +121,12 @@ export function DevoteeCsvImportPageClient() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
-            Import hồ sơ từ CSV
+            Import hồ sơ từ CSV hoặc Excel
           </h1>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Upload CSV để kiểm tra header, validate từng dòng, phát hiện trùng,
-            rồi mới ghi các dòng hợp lệ vào database.
+            Upload CSV hoặc file Excel theo mẫu để kiểm tra header, validate
+            từng dòng, phát hiện trùng, rồi mới ghi các dòng hợp lệ vào
+            database.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -134,19 +136,20 @@ export function DevoteeCsvImportPageClient() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Chọn file CSV</CardTitle>
+          <CardTitle>Chọn file CSV hoặc Excel</CardTitle>
           <CardDescription>
-            File nên có header ở dòng đầu. App tự nhận dấu phẩy, chấm phẩy hoặc
-            tab; ngày có thể nhập dạng YYYY-MM-DD hoặc DD/MM/YYYY.
+            File Excel có thể có nhiều sheet và header ở một dòng bất kỳ. CSV tự
+            nhận dấu phẩy, chấm phẩy hoặc tab. Ngày có thể nhập dạng YYYY-MM-DD
+            hoặc DD/MM/YYYY.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="csv-file">File CSV</Label>
+            <Label htmlFor="csv-file">File CSV hoặc Excel (.xlsx)</Label>
             <Input
               id="csv-file"
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(event) => {
                 setFile(event.target.files?.[0] ?? null);
                 setResult(null);
@@ -160,10 +163,14 @@ export function DevoteeCsvImportPageClient() {
               disabled={!file || Boolean(loadingAction)}
               onClick={() => void submitCsv("preview")}
             >
-              {loadingAction === "preview" ? <Loader2 className="animate-spin" aria-hidden /> : <FileSpreadsheet aria-hidden />}
+              {loadingAction === "preview" ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <FileSpreadsheet aria-hidden />
+              )}
               {loadingAction === "preview"
                 ? "Đang kiểm tra..."
-                : "Kiểm tra CSV"}
+                : "Kiểm tra file"}
             </Button>
             <Button
               type="button"
@@ -171,7 +178,11 @@ export function DevoteeCsvImportPageClient() {
               disabled={!canImport || Boolean(loadingAction)}
               onClick={() => void submitCsv("commit")}
             >
-              {loadingAction === "commit" ? <Loader2 className="animate-spin" aria-hidden /> : <Upload aria-hidden />}
+              {loadingAction === "commit" ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <Upload aria-hidden />
+              )}
               {loadingAction === "commit"
                 ? "Đang import..."
                 : `Import ${result?.summary.importableRows ?? 0} dòng hợp lệ`}
@@ -179,7 +190,7 @@ export function DevoteeCsvImportPageClient() {
           </div>
           {message ? (
             <p
-                  className="rounded-md border border-border bg-[#f7f3ea] px-4 py-3 text-sm text-foreground"
+              className="rounded-md border border-border bg-[#f7f3ea] px-4 py-3 text-sm text-foreground"
               role="status"
             >
               {message}
@@ -256,8 +267,11 @@ export function DevoteeCsvImportPageClient() {
             <CardHeader>
               <CardTitle>Kết quả đọc file</CardTitle>
               <CardDescription>
-                Delimiter: {formatDelimiter(result.delimiter)}. Chỉ hiển thị tối
-                đa {CSV_PREVIEW_ROW_LIMIT} dòng preview đầu tiên.
+                {result.delimiter === "XLSX"
+                  ? "Định dạng: Excel (nhiều sheet)."
+                  : `Delimiter: ${formatDelimiter(result.delimiter)}.`}{" "}
+                Chỉ hiển thị tối đa {CSV_PREVIEW_ROW_LIMIT} dòng preview đầu
+                tiên.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -311,9 +325,12 @@ export function DevoteeCsvImportPageClient() {
                   </thead>
                   <tbody className="divide-y divide-stone-100 bg-card">
                     {result.rows.map((row) => (
-                      <tr key={row.rowNumber} className="transition-colors duration-150 hover:bg-stone-50">
+                      <tr
+                        key={row.rowNumber}
+                        className="transition-colors duration-150 hover:bg-stone-50"
+                      >
                         <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
-                          {row.rowNumber}
+                          {row.sourceLabel ?? row.rowNumber}
                         </td>
                         <td className="whitespace-nowrap px-3 py-3">
                           <span

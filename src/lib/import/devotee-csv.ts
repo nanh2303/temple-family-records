@@ -32,7 +32,8 @@ type DevoteeCoreCsvField =
   | "afterlife_note";
 
 export type DevoteeTrainingDateCsvField = `${DevoteeTrainingRecordKey}_date`;
-export type DevoteeTrainingDecisionCsvField = `${DevoteeTrainingRecordKey}_decision_no`;
+export type DevoteeTrainingDecisionCsvField =
+  `${DevoteeTrainingRecordKey}_decision_no`;
 
 export type DevoteeCsvField =
   | DevoteeCoreCsvField
@@ -188,13 +189,22 @@ export const DEVOTEE_CSV_FIELD_CONFIG = [
   {
     field: "afterlife_note",
     label: "Ghi chú hậu thế",
-    examples: ["ghi chu hau the", "ghi chú hậu thế", "afterlife_note", "afterlife note"],
+    examples: [
+      "ghi chu hau the",
+      "ghi chú hậu thế",
+      "afterlife_note",
+      "afterlife note",
+    ],
   },
   ...DEVOTEE_TRAINING_RECORD_DEFINITIONS.flatMap((definition) => [
     {
       field: `${definition.key}_date` as DevoteeTrainingDateCsvField,
       label: `${definition.label} - Ngày`,
-      examples: [`${definition.label} ngày`, `${definition.key}_date`, `${definition.key} date`],
+      examples: [
+        `${definition.label} ngày`,
+        `${definition.key}_date`,
+        `${definition.key} date`,
+      ],
     },
     {
       field: `${definition.key}_decision_no` as DevoteeTrainingDecisionCsvField,
@@ -243,6 +253,7 @@ export type ExistingDevoteeForImport = Pick<
 export type DevoteeCsvRowStatus = "ready" | "warning" | "error";
 export type DevoteeCsvImportRow = {
   rowNumber: number;
+  sourceLabel?: string;
   status: DevoteeCsvRowStatus;
   values: Partial<Record<DevoteeCsvField, string>>;
   parsedData: DevoteeProfileCreateInput | null;
@@ -386,17 +397,25 @@ function normalizeDateValue(value: string) {
   const [, day, month, year] = match;
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
-function getTrainingDateKey(field: DevoteeCsvField): DevoteeTrainingRecordKey | null {
+function getTrainingDateKey(
+  field: DevoteeCsvField,
+): DevoteeTrainingRecordKey | null {
   if (!field.endsWith("_date")) return null;
   const key = field.slice(0, -"_date".length);
-  return DEVOTEE_TRAINING_RECORD_DEFINITIONS.some((definition) => definition.key === key)
+  return DEVOTEE_TRAINING_RECORD_DEFINITIONS.some(
+    (definition) => definition.key === key,
+  )
     ? (key as DevoteeTrainingRecordKey)
     : null;
 }
-function getTrainingDecisionKey(field: DevoteeCsvField): DevoteeTrainingRecordKey | null {
+function getTrainingDecisionKey(
+  field: DevoteeCsvField,
+): DevoteeTrainingRecordKey | null {
   if (!field.endsWith("_decision_no")) return null;
   const key = field.slice(0, -"_decision_no".length);
-  return DEVOTEE_TRAINING_RECORD_DEFINITIONS.some((definition) => definition.key === key)
+  return DEVOTEE_TRAINING_RECORD_DEFINITIONS.some(
+    (definition) => definition.key === key,
+  )
     ? (key as DevoteeTrainingRecordKey)
     : null;
 }
@@ -407,45 +426,83 @@ function splitListCell(value: string | undefined) {
     .map((item) => item.trim())
     .filter(Boolean);
 }
-function buildProfileInputFromCsvValues(values: Partial<Record<DevoteeCsvField, string>>) {
+function buildProfileInputFromCsvValues(
+  values: Partial<Record<DevoteeCsvField, string>>,
+) {
   const input: Record<string, unknown> = {};
-  const trainingRecords = new Map<DevoteeTrainingRecordKey, { completed_date: string; decision_no: string }>();
+  const trainingRecords = new Map<
+    DevoteeTrainingRecordKey,
+    { completed_date: string; decision_no: string }
+  >();
 
-  for (const [field, rawValue] of Object.entries(values) as [DevoteeCsvField, string][]) {
+  for (const [field, rawValue] of Object.entries(values) as [
+    DevoteeCsvField,
+    string,
+  ][]) {
     const trainingDateKey = getTrainingDateKey(field);
     if (trainingDateKey) {
-      const current = trainingRecords.get(trainingDateKey) ?? { completed_date: "", decision_no: "" };
-      trainingRecords.set(trainingDateKey, { ...current, completed_date: rawValue });
+      const current = trainingRecords.get(trainingDateKey) ?? {
+        completed_date: "",
+        decision_no: "",
+      };
+      trainingRecords.set(trainingDateKey, {
+        ...current,
+        completed_date: rawValue,
+      });
       continue;
     }
 
     const trainingDecisionKey = getTrainingDecisionKey(field);
     if (trainingDecisionKey) {
-      const current = trainingRecords.get(trainingDecisionKey) ?? { completed_date: "", decision_no: "" };
-      trainingRecords.set(trainingDecisionKey, { ...current, decision_no: rawValue });
+      const current = trainingRecords.get(trainingDecisionKey) ?? {
+        completed_date: "",
+        decision_no: "",
+      };
+      trainingRecords.set(trainingDecisionKey, {
+        ...current,
+        decision_no: rawValue,
+      });
       continue;
     }
 
-    if (field === "roles" || field === "achievements" || field === "comments" || field === "other_notes") {
+    if (
+      field === "roles" ||
+      field === "achievements" ||
+      field === "comments" ||
+      field === "other_notes"
+    ) {
       continue;
     }
 
     input[field] = rawValue;
   }
 
-  const training_records = DEVOTEE_TRAINING_RECORD_DEFINITIONS.flatMap((definition) => {
-    const record = trainingRecords.get(definition.key);
-    if (!record || (!record.completed_date && !record.decision_no)) return [];
-    return [{ key: definition.key, ...record }];
-  });
+  const training_records = DEVOTEE_TRAINING_RECORD_DEFINITIONS.flatMap(
+    (definition) => {
+      const record = trainingRecords.get(definition.key);
+      if (!record || (!record.completed_date && !record.decision_no)) return [];
+      return [{ key: definition.key, ...record }];
+    },
+  );
 
   const notes = [
-    ...splitListCell(values.achievements).map((content) => ({ note_type: "achievement" as const, content })),
-    ...splitListCell(values.comments).map((content) => ({ note_type: "comment" as const, content })),
-    ...splitListCell(values.other_notes).map((content) => ({ note_type: "other" as const, content })),
+    ...splitListCell(values.achievements).map((content) => ({
+      note_type: "achievement" as const,
+      content,
+    })),
+    ...splitListCell(values.comments).map((content) => ({
+      note_type: "comment" as const,
+      content,
+    })),
+    ...splitListCell(values.other_notes).map((content) => ({
+      note_type: "other" as const,
+      content,
+    })),
   ];
 
-  const roles = splitListCell(values.roles).map((role_title) => ({ role_title }));
+  const roles = splitListCell(values.roles).map((role_title) => ({
+    role_title,
+  }));
 
   if (training_records.length > 0) input.training_records = training_records;
   if (roles.length > 0) input.roles = roles;
@@ -453,7 +510,7 @@ function buildProfileInputFromCsvValues(values: Partial<Record<DevoteeCsvField, 
 
   return input;
 }
-function mapHeader(header: string): DevoteeCsvField | null {
+export function mapDevoteeCsvHeader(header: string): DevoteeCsvField | null {
   return FIELD_BY_ALIAS.get(normalizeHeader(header)) ?? null;
 }
 function labelFor(field: DevoteeCsvField) {
@@ -557,7 +614,7 @@ export function parseDevoteeCsv(text: string): DevoteeCsvImportPreview {
   const seenFields = new Set<DevoteeCsvField>();
   const duplicateHeaders: string[] = [];
   const mappedHeaders = headers.map((header) => {
-    const field = mapHeader(header);
+    const field = mapDevoteeCsvHeader(header);
     if (!field) return { header, field: null, label: null };
     if (seenFields.has(field)) {
       duplicateHeaders.push(header);
@@ -629,10 +686,12 @@ export function applyDevoteeCsvDuplicateChecks(
 ): DevoteeCsvImportPreview {
   const familyRegistryRows = new Map<string, number>(),
     bhdRegistryRows = new Map<string, number>(),
-    identityRows = new Map<string, number>();
+    identityRows = new Map<string, number>(),
+    nameOnlyRows = new Map<string, number>();
   const existingFamilyRegistry = new Map<string, ExistingDevoteeForImport>(),
     existingBhdRegistry = new Map<string, ExistingDevoteeForImport>(),
-    existingIdentity = new Map<string, ExistingDevoteeForImport>();
+    existingIdentity = new Map<string, ExistingDevoteeForImport>(),
+    existingNames = new Map<string, ExistingDevoteeForImport>();
   for (const devotee of existingDevotees) {
     const familyKey = normalizeComparable(devotee.family_registry_no),
       bhdKey = normalizeComparable(devotee.bhd_registry_no),
@@ -640,6 +699,9 @@ export function applyDevoteeCsvDuplicateChecks(
     if (familyKey) existingFamilyRegistry.set(familyKey, devotee);
     if (bhdKey) existingBhdRegistry.set(bhdKey, devotee);
     if (identityKey) existingIdentity.set(identityKey, devotee);
+    const nameKey = normalizeComparable(devotee.full_name);
+    if (nameKey && !existingNames.has(nameKey))
+      existingNames.set(nameKey, devotee);
   }
   const rows = preview.rows.map((row) => {
     const errors = [...row.errors],
@@ -671,6 +733,22 @@ export function applyDevoteeCsvDuplicateChecks(
           `Có vẻ trùng họ tên + ngày sinh + cha/mẹ với dòng ${firstRow} trong file.`,
       );
       if (identityRowWarning) warnings.push(identityRowWarning);
+      if (!identityKey && !familyKey && !bhdKey) {
+        const nameKey = normalizeComparable(row.parsedData.full_name);
+        const nameRowWarning = pushDuplicateError(
+          nameOnlyRows,
+          nameKey,
+          row.rowNumber,
+          (firstRow) =>
+            `Có thể trùng họ tên với dòng ${firstRow}; file không có ngày sinh đầy đủ hoặc số danh bộ để xác nhận.`,
+        );
+        if (nameRowWarning) warnings.push(nameRowWarning);
+        const existingName = existingNames.get(nameKey);
+        if (existingName)
+          warnings.push(
+            `Đã có hồ sơ cùng họ tên trong database: ${existingName.full_name}; hãy đối chiếu thủ công trước khi import.`,
+          );
+      }
       const existingFamily = familyKey
         ? existingFamilyRegistry.get(familyKey)
         : null;

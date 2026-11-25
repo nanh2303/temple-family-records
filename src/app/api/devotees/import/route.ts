@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { saveDevoteeProfileRelatedRecords, splitDevoteeProfilePayload } from "@/lib/data/devotee-afterlife";
+import {
+  saveDevoteeProfileRelatedRecords,
+  splitDevoteeProfilePayload,
+} from "@/lib/data/devotee-afterlife";
 import {
   applyDevoteeCsvDuplicateChecks,
   getImportableRows,
@@ -8,10 +11,13 @@ import {
   parseDevoteeCsv,
   type ExistingDevoteeForImport,
 } from "@/lib/import/devotee-csv";
+import { parseDevoteeExcel } from "@/lib/import/devotee-excel";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-const MAX_CSV_FILE_BYTES = 2 * 1024 * 1024;
+export const runtime = "nodejs";
+
+const MAX_IMPORT_FILE_BYTES = 2 * 1024 * 1024;
 const INSERT_BATCH_SIZE = 500;
 
 type ImportAction = "preview" | "commit";
@@ -23,13 +29,16 @@ function isImportAction(
   return value === "preview" || value === "commit";
 }
 
-async function readCsvFile(formData: FormData) {
+async function parseImportFile(formData: FormData) {
   const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("Hãy chọn một file CSV.");
-  if (file.size === 0) throw new Error("File CSV đang rỗng.");
-  if (file.size > MAX_CSV_FILE_BYTES)
-    throw new Error("File CSV quá lớn. Giới hạn hiện tại là 2MB/lần import.");
-  return file.text();
+  if (!(file instanceof File)) throw new Error("Hãy chọn file CSV hoặc Excel.");
+  if (file.size === 0) throw new Error("File đang rỗng.");
+  if (file.size > MAX_IMPORT_FILE_BYTES)
+    throw new Error("File quá lớn. Giới hạn hiện tại là 2MB/lần import.");
+  if (/\.xlsx$/i.test(file.name))
+    return parseDevoteeExcel(await file.arrayBuffer());
+  if (/\.csv$/i.test(file.name)) return parseDevoteeCsv(await file.text());
+  throw new Error("Định dạng chưa hỗ trợ. Hãy chọn file .csv hoặc .xlsx.");
 }
 
 async function fetchExistingDevotees(supabase: SupabaseClient) {
@@ -65,7 +74,11 @@ async function insertInBatches(
   for (let start = 0; start < rows.length; start += INSERT_BATCH_SIZE) {
     const batch = rows
       .slice(start, start + INSERT_BATCH_SIZE)
-      .flatMap((row) => (row.parsedData ? [{ payload: splitDevoteeProfilePayload(row.parsedData) }] : []));
+      .flatMap((row) =>
+        row.parsedData
+          ? [{ payload: splitDevoteeProfilePayload(row.parsedData) }]
+          : [],
+      );
 
     if (batch.length === 0) continue;
 
@@ -81,7 +94,11 @@ async function insertInBatches(
       const { related } = batch[index].payload;
       if (!createdDevotee) continue;
 
-      await saveDevoteeProfileRelatedRecords(supabase, createdDevotee.id, related);
+      await saveDevoteeProfileRelatedRecords(
+        supabase,
+        createdDevotee.id,
+        related,
+      );
 
       inserted.push(createdDevotee);
     }
@@ -111,9 +128,8 @@ export async function POST(request: Request) {
   const adminSupabase = createAdminSupabaseClient();
 
   try {
-    const csvText = await readCsvFile(formData);
+    const parsedPreview = await parseImportFile(formData);
     const existingDevotees = await fetchExistingDevotees(adminSupabase);
-    const parsedPreview = parseDevoteeCsv(csvText);
     const preview = applyDevoteeCsvDuplicateChecks(
       parsedPreview,
       existingDevotees,
@@ -133,7 +149,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           action,
-          error: "CSV chưa hợp lệ để import.",
+          error: "File chưa hợp lệ để import.",
           ...preview,
           rows: previewRows,
           truncated: preview.rows.length > previewRows.length,
@@ -168,7 +184,8 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Không thể import CSV.",
+        error:
+          error instanceof Error ? error.message : "Không thể import file.",
       },
       { status: 400 },
     );
